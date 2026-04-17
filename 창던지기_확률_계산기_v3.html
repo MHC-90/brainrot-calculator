@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>창던지기 브레인롯 — 확률 계산기</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#f5f4f0; color:#1a1a1a; min-height:100vh; padding:28px 16px;
+}
+.container { max-width:680px; margin:0 auto; }
+h1 { font-size:20px; font-weight:600; margin-bottom:3px; }
+.subtitle { font-size:13px; color:#777; margin-bottom:24px; }
+
+.card {
+  background:#fff; border-radius:14px;
+  padding:18px 20px; margin-bottom:12px;
+  border:0.5px solid rgba(0,0,0,0.1);
+}
+.sec-label {
+  font-size:11px; font-weight:700; color:#aaa;
+  text-transform:uppercase; letter-spacing:.07em; margin-bottom:11px;
+}
+.ctrl-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.ctrl-row:last-child { margin-bottom:0; }
+.ctrl-label { font-size:13px; color:#555; min-width:100px; line-height:1.3; }
+.ctrl-label small { display:block; font-size:10px; color:#bbb; margin-top:1px; }
+.ctrl-val { font-size:13px; font-weight:700; color:#1a1a1a; min-width:52px; text-align:right; }
+input[type=range] {
+  flex:1; -webkit-appearance:none; height:4px;
+  background:#e0e0e0; border-radius:2px; outline:none; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:17px; height:17px;
+  border-radius:50%; background:#1a1a1a; cursor:pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width:17px; height:17px; border-radius:50%; background:#1a1a1a; cursor:pointer; border:none;
+}
+
+.zone-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
+.zone-sep { grid-column:1/-1; height:1px; background:#f0efe9; margin:2px 0; }
+.zone-btn {
+  padding:7px 3px; font-size:11px; border:1px solid #e0e0e0;
+  border-radius:7px; background:#fff; color:#666;
+  cursor:pointer; text-align:center; font-family:inherit; transition:all .12s;
+}
+.zone-btn:hover { background:#f5f4f0; }
+.zone-btn.active { background:#1a1a1a; color:#fff; border-color:#1a1a1a; font-weight:600; }
+.divider { height:1px; background:#f0efe9; margin:14px 0; }
+
+.grade-block { margin:3px 0; border-radius:8px; overflow:hidden; }
+.grade-bar-row {
+  display:flex; align-items:center; gap:9px;
+  cursor:pointer; padding:4px 6px; border-radius:8px; transition:background .12s;
+}
+.grade-bar-row:hover { background:#f8f7f4; }
+.grade-bar-row.open { background:#f5f4f0; border-radius:8px 8px 0 0; }
+.bar-label { font-size:12px; color:#555; min-width:94px; text-align:right; }
+.bar-label .arrow { font-size:9px; color:#bbb; margin-left:4px; transition:transform .2s; display:inline-block; }
+.grade-bar-row.open .arrow { transform:rotate(90deg); }
+.bar-track { flex:1; height:22px; background:#f0efe9; border-radius:5px; overflow:hidden; }
+.bar-fill {
+  height:100%; border-radius:5px; transition:width .25s ease;
+  display:flex; align-items:center; justify-content:flex-end; padding-right:7px;
+}
+.bar-inside { font-size:11px; font-weight:700; color:rgba(255,255,255,.93); white-space:nowrap; }
+.bar-outside { font-size:12px; font-weight:600; color:#333; min-width:46px; }
+
+.br-panel {
+  background:#faf9f7; border-radius:0 0 8px 8px;
+  padding:10px 10px 10px 16px; display:none; border-top:1px solid #eeede9;
+}
+.br-panel.open { display:block; }
+.br-panel-title { font-size:10px; font-weight:700; color:#bbb; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+.br-row { display:flex; align-items:center; gap:8px; margin:3px 0; }
+.br-name { font-size:11px; color:#444; min-width:150px; text-align:right; line-height:1.25; }
+.br-inc { font-size:10px; color:#bbb; display:block; }
+.br-track { flex:1; height:18px; background:#eeede9; border-radius:4px; overflow:hidden; }
+.br-fill {
+  height:100%; border-radius:4px; transition:width .2s;
+  display:flex; align-items:center; justify-content:flex-end; padding-right:6px; opacity:.85;
+}
+.br-inside { font-size:10px; font-weight:700; color:rgba(255,255,255,.9); white-space:nowrap; }
+.br-pct-out { font-size:11px; font-weight:600; color:#555; min-width:38px; }
+
+.formula-section {
+  margin-top:14px; padding-top:14px; border-top:1px solid #f0efe9;
+  display:flex; flex-direction:column; gap:10px;
+}
+.formula-block {
+  background:#f5f4f0; border-radius:8px; padding:12px 14px;
+  font-family:'SF Mono','Fira Code','Consolas',monospace; font-size:11.5px;
+  line-height:1;
+}
+.f-title {
+  font-size:10px; font-weight:700; color:#aaa;
+  text-transform:uppercase; letter-spacing:.06em;
+  margin-bottom:10px; font-family:inherit;
+}
+.f-line { display:flex; align-items:baseline; gap:0; margin-bottom:7px; }
+.f-line:last-child { margin-bottom:0; }
+.f-expr { color:#1a1a1a; font-weight:600; white-space:nowrap; }
+.f-comment { color:#aaa; font-size:10.5px; margin-left:12px; line-height:1.4; }
+.f-divider { height:1px; background:#e8e7e3; margin:9px 0; }
+.f-var { color:#1a1a1a; font-weight:700; }
+.f-val { color:#185FA5; }
+
+.note { font-size:11px; color:#ccc; margin-top:14px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>창던지기 브레인롯 — 확률 계산기</h1>
+<p class="subtitle">1단계: 등급 확률 &nbsp;/&nbsp; 2단계: 등급 클릭 → 개체 확률</p>
+
+<div class="card">
+  <p class="sec-label">파라미터</p>
+  <div class="ctrl-row">
+    <span class="ctrl-label">감쇠계수 r1<small>등급 선택</small></span>
+    <input type="range" min="0" max="100" value="50" step="5" id="r1-sl">
+    <span class="ctrl-val" id="r1-v">0.50</span>
+  </div>
+  <div class="ctrl-row">
+    <span class="ctrl-label">감쇠계수 r2<small>개체 선택</small></span>
+    <input type="range" min="0" max="100" value="50" step="5" id="r2-sl">
+    <span class="ctrl-val" id="r2-v">0.50</span>
+  </div>
+  <div class="ctrl-row">
+    <span class="ctrl-label">행운력 L%</span>
+    <input type="range" min="0" max="1000" value="0" step="10" id="luck-sl">
+    <span class="ctrl-val" id="luck-v">0%</span>
+  </div>
+  <div class="ctrl-row">
+    <span class="ctrl-label">집중력 n<small>행운력 분포 곡선</small></span>
+    <input type="range" min="0" max="50" value="10" step="5" id="n-sl">
+    <span class="ctrl-val" id="n-v">1.0</span>
+  </div>
+</div>
+
+<div class="card">
+  <p class="sec-label">창이 떨어진 존</p>
+  <div class="zone-grid" id="zone-grid"></div>
+  <div class="divider"></div>
+  <div id="s1-result" style="display:none">
+    <p class="sec-label" style="margin-bottom:8px">
+      등급별 등장 확률
+      <span style="font-weight:400;font-size:10px;color:#ccc;margin-left:4px">— 클릭하면 개체 확률 펼침</span>
+    </p>
+    <div id="grade-blocks"></div>
+
+    <div class="formula-section">
+      <div class="formula-block">
+        <div class="f-title">1단계 — 등급 선택 확률</div>
+        <div class="f-line">
+          <span class="f-expr">P(gi) = (1 − t) × P_base(gi)  +  t × P_luck(gi)</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">gi</span></span>
+          <span class="f-comment">등급 인덱스 — 0=Common · 1=Rare · 2=Epic · 3=Legendary · 4=Mythic · 5=Brainrot God · 6=Secret · 7=OG</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">k</span></span>
+          <span class="f-comment">창이 떨어진 존의 최고 등급 gi + 1 &nbsp;(예: Secret존 → k=7, OG존 → k=8)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">t</span>  = L / 1000 = <span class="f-val" id="disp-t">0.00</span></span>
+          <span class="f-comment">행운력 혼합 비율 (0=기본분포 그대로, 1=행운분포로 완전 전환)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">P_base</span></span>
+          <span class="f-comment">W_base(gi) = 1 + r1×(k−1−gi) 로 정규화 — r1 클수록 하위 등급이 더 자주 등장</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">P_luck</span></span>
+          <span class="f-comment">W_luck(gi) = (gi+1)^n 으로 정규화 — n=0이면 균등, n 클수록 최상위에 집중</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">r1</span> = <span class="f-val" id="disp-r1">0.50</span></span>
+          <span class="f-comment">감쇠계수 (등급용)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">L</span>  = <span class="f-val" id="disp-l">0</span>%</span>
+          <span class="f-comment">행운력 — 클수록 P_luck 비중 증가</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">n</span>  = <span class="f-val" id="disp-n">1.0</span></span>
+          <span class="f-comment">집중력 — 클수록 행운 효과가 최상위 등급에만 집중</span>
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="f-title">2단계 — 등급 내 개체 선택 확률</div>
+        <div class="f-line">
+          <span class="f-expr">W(j) = 1 + r2 × rank[j]</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">j</span></span>
+          <span class="f-comment">등급 내 개별 브레인롯</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">rank[j]</span></span>
+          <span class="f-comment">수익 내림차순 순위 (0 = 최고수익, 동수는 같은 rank)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">r2</span> = <span class="f-val" id="disp-r2">0.50</span></span>
+          <span class="f-comment">감쇠계수 (개체용) — 클수록 저수익 개체가 더 자주 등장</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="padding:14px 20px">
+  <p class="sec-label" style="margin-bottom:10px">서버 동기화</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <button onclick="loadFromServer()" style="flex:1;min-width:130px;padding:10px 12px;border:1px solid #e0e0e0;border-radius:9px;background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:#1a1a1a;cursor:pointer">
+      ↓ 서버에서 불러오기
+    </button>
+    <button onclick="saveToServer()" style="flex:1;min-width:130px;padding:10px 12px;border:1px solid #1a1a1a;border-radius:9px;background:#1a1a1a;font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">
+      ↑ 서버에 저장
+    </button>
+    <button onclick="exportConfig()" style="flex:1;min-width:130px;padding:10px 12px;border:1px solid #7F77DD;border-radius:9px;background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:#7F77DD;cursor:pointer">
+      ⬇ Config.lua 저장
+    </button>
+  </div>
+  <div id="sync-status" style="font-size:12px;color:#aaa">페이지 로드 시 자동으로 서버에서 불러옵니다</div>
+</div>
+
+<p class="note">창던지기 브레인롯 — Appnori © 2025</p>
+</div>
+
+<script>
+const GRADE_NAMES  = ['Common','Rare','Epic','Legendary','Mythic','Brainrot God','Secret','OG'];
+const GRADE_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5','#E24B4A'];
+
+const ZONES = [
+  {n:'Common존',   k:1,el:0}, {n:'Rare존',      k:2,el:0},
+  {n:'Epic존',     k:3,el:0}, {n:'Legendary존', k:4,el:0},
+  {n:'Mythic존',   k:5,el:0},
+  null,
+  {n:'B.God존',    k:6,el:0}, {n:'Secret존',    k:7,el:0},
+  {n:'OG존',       k:8,el:0},
+  null,
+  {n:'Secret+10%', k:7,el:10},{n:'Secret+20%',  k:7,el:20},
+  {n:'Secret+30%', k:7,el:30},{n:'Secret+40%',  k:7,el:40},
+  {n:'Secret+50%', k:7,el:50},
+  null,
+  {n:'OG+10%',     k:8,el:10},{n:'OG+20%',      k:8,el:20},
+  {n:'OG+30%',     k:8,el:30},{n:'OG+40%',      k:8,el:40},
+  {n:'OG+50%',     k:8,el:50},
+];
+
+const BR = {
+  'Common':[
+    {n:'Pipi Kiwi',inc:13,r:0},{n:'Svinina Bombardino',inc:10,r:1},
+    {n:'Talpa Di Fero',inc:9,r:2},{n:'Fluri Flura',inc:7,r:3},
+    {n:'Tim Cheese',inc:5,r:4},{n:'Lirili Larila',inc:3,r:5},
+  ],
+  'Rare':[
+    {n:'Tric Trac Barabum',inc:65,r:0},{n:'Ta Ta Ta Ta Sahur',inc:55,r:1},
+    {n:'Banana Dancana',inc:50,r:2},{n:'Cacto Hipopotamo',inc:50,r:2},
+    {n:'Boneca Ambalabu',inc:40,r:3},{n:'Bobrito Bandito',inc:35,r:4},
+    {n:'Gangster Footera',inc:30,r:5},{n:'Tung Sahur',inc:25,r:6},
+    {n:'Trippi Troppi',inc:15,r:7},
+  ],
+  'Epic':[
+    {n:'Avocadini Guffo',inc:225,r:0},{n:'Brri Brri Bicus Dicus',inc:175,r:1},
+    {n:'Bananita Dolphinita',inc:150,r:2},{n:'Bambini Crostini',inc:135,r:3},
+    {n:'Trulimero Trulicina',inc:125,r:4},{n:'Brr Brr Patapim',inc:100,r:5},
+    {n:'Bananini Kittini',inc:100,r:5},{n:'Cappuccino Assassino',inc:75,r:6},
+  ],
+  'Legendary':[
+    {n:'Pandaccini Bananini',inc:1200,r:0},{n:'Pipi Potato',inc:1100,r:1},
+    {n:'Strawberrelli Flamingelli',inc:1100,r:1},{n:'Blueberrinni Octopusini',inc:1000,r:2},
+    {n:'Glorbo Fruttodrillo',inc:750,r:3},{n:'Nyannini Cattalini',inc:700,r:4},
+    {n:'Lionel Cactuseli',inc:650,r:5},{n:'Smurfo Gatto',inc:600,r:6},
+    {n:'Chef Crabracadabra',inc:600,r:6},{n:'Illuminato Triangolo',inc:500,r:7},
+    {n:'Ballerina Cappuccina',inc:500,r:7},{n:'Tirilikalika Tirilikalako',inc:450,r:8},
+    {n:'Teddino Rosino',inc:450,r:8},{n:'Chimpanzini Bananini',inc:300,r:9},
+    {n:'Burbaloni Luliloli',inc:250,r:10},
+  ],
+  'Mythic':[
+    {n:'Cachorrito Melonito',inc:13000,r:0},{n:'Ganganzelli Trulala',inc:9000,r:1},
+    {n:'Lerulerulerule',inc:8750,r:2},{n:'Gorillo Watermelondrillo',inc:8000,r:3},
+    {n:'Cavallo Virtuoso',inc:7500,r:4},{n:'Zibra Zubra Zibralini',inc:6000,r:5},
+    {n:'Bombombini Gusini',inc:5000,r:6},{n:'Bombardiro Crocodilo',inc:2500,r:7},
+    {n:'Rhino Toasterino',inc:2100,r:8},{n:'Orangutini Ananassini',inc:1700,r:9},
+    {n:'Frigo Camelo',inc:1500,r:10},
+  ],
+  'Brainrot God':[
+    {n:'Pakrahmatmatina',inc:225000,r:0},{n:'Pakrahmatmamat',inc:215000,r:1},
+    {n:'Pakrahmatmatina Valentina',inc:215000,r:1},{n:'Ballerino Lololo',inc:200000,r:2},
+    {n:'Trippi Troppi Troppa Trippa',inc:175000,r:3},{n:'Tralalita Tralala',inc:100000,r:4},
+    {n:'Orcalero Orcala',inc:100000,r:4},{n:'Odin Din Din Dun',inc:75000,r:5},
+    {n:'Espresso Signora',inc:70000,r:6},{n:'Tigroligre Frutonni',inc:60000,r:7},
+    {n:'Madudung',inc:50000,r:8},{n:'Matteo',inc:50000,r:8},
+    {n:'Tralalero Tralala',inc:50000,r:8},{n:'Girafa Celeste',inc:20000,r:9},
+    {n:'Cocofanto Elefanto',inc:17500,r:10},
+  ],
+  'Secret':[
+    {n:'Dragon Cannelloni',inc:2500000,r:0},{n:'Garamararam',inc:2350000,r:1},
+    {n:'Esok Sekolah',inc:2200000,r:2},{n:'Tralaledon',inc:2100000,r:3},
+    {n:'Chicleteira Cupideira',inc:1900000,r:4},{n:'Swag Soda',inc:1800000,r:5},
+    {n:'Noo My Heart',inc:1700000,r:6},{n:'La Grande Combinasion',inc:1550000,r:7},
+    {n:'Six Seven',inc:1350000,r:8},{n:'Chillin Chili',inc:1150000,r:9},
+    {n:'Chicleteirina Bicicleteirina',inc:1050000,r:10},{n:'Chicleteira Bicicleteira',inc:950000,r:11},
+    {n:'Quesadilla Crocodila',inc:850000,r:12},{n:'Pot Hotspot',inc:750000,r:13},
+    {n:'Noo My Examen',inc:660000,r:14},{n:'1x1x1x1',inc:600000,r:15},
+    {n:'Love Love Love Sahur',inc:530000,r:16},{n:'Los Tralaleritos',inc:475000,r:17},
+    {n:'Triplito Tralaleritos',inc:475000,r:17},{n:'Job Job Job Sahur',inc:430000,r:18},
+    {n:'Yess My Examen',inc:390000,r:19},{n:'Agarrini La Pallini',inc:350000,r:20},
+    {n:'Torrtuginni Dragonfrutini',inc:325000,r:21},{n:'Karkerkar Kurkur',inc:300000,r:22},
+    {n:'La Vacca Saturno Saturnita',inc:300000,r:22},
+  ],
+  'OG':[
+    {n:'Strawberry Elephant',inc:70000000,r:0},
+    {n:'Meowl',inc:50000000,r:1},
+  ],
+};
+
+let r1=0.5, r2=0.5, luck=0, n_exp=1.0, currentZone=null;
+const openGrades = new Set();
+
+function fmtInc(v) {
+  if (v>=1000000) return (v/1000000).toFixed(1)+'M';
+  if (v>=1000) return Math.round(v/1000)+'K';
+  return v;
+}
+
+function calcGradeProbs(k, tl) {
+  if (k === 1) return [100];
+
+  const t = Math.min(tl / 1000, 1);
+
+  // P_base: r1 감쇠 분포
+  const wb = Array.from({length:k}, (_,gi) => 1 + r1*(k-1-gi));
+  const sb = wb.reduce((a,b)=>a+b, 0);
+  const pb = wb.map(w => w/sb);
+
+  // P_luck: 상위 집중 분포 — W_luck(gi) = (gi+1)^n
+  // n=0이면 균등, n 클수록 최상위에 집중. Common도 자연스럽게 참여 (1^n = 1)
+  const wl = Array.from({length:k}, (_,gi) => Math.pow(gi + 1, n_exp));
+  const sl = wl.reduce((a,b)=>a+b, 0);
+  const pl = wl.map(w => w/sl);
+
+  // 혼합
+  return Array.from({length:k}, (_,gi) => ((1-t)*pb[gi] + t*pl[gi]) * 100);
+}
+
+function calcBrProbs(grade) {
+  const list = BR[grade];
+  const w = list.map(b=>1+r2*b.r);
+  const s = w.reduce((a,b)=>a+b,0);
+  return w.map(x=>x/s*100);
+}
+
+function buildBrPanel(gi, color) {
+  const grade = GRADE_NAMES[gi];
+  const list = BR[grade];
+  const probs = calcBrProbs(grade);
+  const maxP = Math.max(...probs);
+  const panel = document.createElement('div');
+  panel.className = 'br-panel'+(openGrades.has(gi)?' open':'');
+  panel.dataset.gi = gi;
+  let html = `<div class="br-panel-title">${grade} 브레인롯 ${list.length}종</div>`;
+  list.forEach((b,i)=>{
+    const p=probs[i], bw=p/maxP*100;
+    html+=`
+      <div class="br-row">
+        <div class="br-name">${b.n}<span class="br-inc">${fmtInc(b.inc)}/s</span></div>
+        <div class="br-track">
+          <div class="br-fill" style="width:${Math.max(bw,0.3)}%;background:${color}">
+            ${bw>35?`<span class="br-inside">${p.toFixed(1)}%</span>`:''}
+          </div>
+        </div>
+        <span class="br-pct-out">${bw<=35?p.toFixed(1)+'%':''}</span>
+      </div>`;
+  });
+  panel.innerHTML = html;
+  return panel;
+}
+
+const zg = document.getElementById('zone-grid');
+ZONES.forEach((z,zi)=>{
+  if(z===null){const s=document.createElement('div');s.className='zone-sep';zg.appendChild(s);return;}
+  const btn=document.createElement('div');
+  btn.className='zone-btn'; btn.textContent=z.n; btn.dataset.zi=zi;
+  btn.onclick=()=>{currentZone=zi;openGrades.clear();render();};
+  zg.appendChild(btn);
+});
+
+function updateDispValues(tl) {
+  document.getElementById('disp-r1').textContent = r1.toFixed(2);
+  document.getElementById('disp-r2').textContent = r2.toFixed(2);
+  document.getElementById('disp-l').textContent  = luck;
+  document.getElementById('disp-n').textContent  = n_exp.toFixed(1);
+  document.getElementById('disp-t').textContent  = Math.min(tl/1000,1).toFixed(2);
+}
+
+function render() {
+  if(currentZone===null) return;
+  zg.querySelectorAll('.zone-btn').forEach(b=>b.classList.toggle('active',+b.dataset.zi===currentZone));
+  const z=ZONES[currentZone];
+  const tl=luck+z.el;
+  updateDispValues(tl);
+
+  const probs=calcGradeProbs(z.k, tl);
+  const maxP=Math.max(...probs);
+
+  document.getElementById('s1-result').style.display='block';
+  const gb=document.getElementById('grade-blocks');
+  gb.innerHTML='';
+
+  for(let gi=z.k-1;gi>=0;gi--){
+    const p=probs[gi], bw=p/maxP*100, color=GRADE_COLORS[gi];
+    const block=document.createElement('div');
+    block.className='grade-block'; block.dataset.gi=gi;
+    const barRow=document.createElement('div');
+    barRow.className='grade-bar-row'+(openGrades.has(gi)?' open':'');
+    barRow.innerHTML=`
+      <span class="bar-label">${GRADE_NAMES[gi]}<span class="arrow">›</span></span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.max(bw,0.3)}%;background:${color}">
+          ${bw>30?`<span class="bar-inside">${p.toFixed(1)}%</span>`:''}
+        </div>
+      </div>
+      <span class="bar-outside">${bw<=30?p.toFixed(1)+'%':''}</span>
+    `;
+    barRow.onclick=()=>{
+      if(openGrades.has(gi)) openGrades.delete(gi); else openGrades.add(gi);
+      render();
+    };
+    block.appendChild(barRow);
+    block.appendChild(buildBrPanel(gi,color));
+    gb.appendChild(block);
+  }
+}
+
+document.getElementById('r1-sl').oninput=e=>{r1=e.target.value/100;document.getElementById('r1-v').textContent=r1.toFixed(2);render();};
+document.getElementById('r2-sl').oninput=e=>{r2=e.target.value/100;document.getElementById('r2-v').textContent=r2.toFixed(2);render();};
+document.getElementById('luck-sl').oninput=e=>{luck=+e.target.value;document.getElementById('luck-v').textContent=luck+'%';render();};
+document.getElementById('n-sl').oninput=e=>{n_exp=e.target.value/10;document.getElementById('n-v').textContent=n_exp.toFixed(1);render();};
+
+
+const API_URL = 'https://zbrsowxhjl.execute-api.us-east-1.amazonaws.com/config';
+
+function applyConfig(data) {
+  r1    = parseFloat(data.r1)  || 0.5;
+  r2    = parseFloat(data.r2)  || 0.5;
+  luck  = parseInt(data.luck)  || 0;
+  n_exp = parseFloat(data.n)   || 1.0;
+  document.getElementById('r1-sl').value   = Math.round(r1*100);
+  document.getElementById('r2-sl').value   = Math.round(r2*100);
+  document.getElementById('luck-sl').value = luck;
+  document.getElementById('n-sl').value    = Math.round(n_exp*10);
+  document.getElementById('r1-v').textContent   = r1.toFixed(2);
+  document.getElementById('r2-v').textContent   = r2.toFixed(2);
+  document.getElementById('luck-v').textContent = luck + '%';
+  document.getElementById('n-v').textContent    = n_exp.toFixed(1);
+  render();
+}
+
+function setStatus(msg, color) {
+  const el = document.getElementById('sync-status');
+  el.textContent = msg;
+  el.style.color = color || '#aaa';
+}
+
+async function loadFromServer() {
+  setStatus('불러오는 중...', '#aaa');
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    applyConfig(data);
+    setStatus('✓ 서버에서 불러옴 (' + new Date().toLocaleTimeString('ko-KR') + ')', '#1D9E75');
+  } catch(e) {
+    setStatus('✗ 불러오기 실패 — 기본값으로 시작합니다', '#E24B4A');
+    render();
+  }
+}
+
+async function saveToServer() {
+  setStatus('저장 중...', '#aaa');
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({r1, r2, luck, n: n_exp})
+    });
+    setStatus('✓ 저장됨 (' + new Date().toLocaleTimeString('ko-KR') + ')', '#1D9E75');
+  } catch(e) {
+    setStatus('✗ 저장 실패', '#E24B4A');
+  }
+}
+
+function exportConfig() {
+  const now = new Date().toLocaleString('ko-KR');
+  const lines = [
+    '-- GachaConfig.lua',
+    '-- 생성 시각: ' + now,
+    '',
+    'local GachaConfig = {}',
+    '',
+    'GachaConfig.r1    = ' + r1.toFixed(2) + '  -- 감쇠계수 (등급용)',
+    'GachaConfig.r2    = ' + r2.toFixed(2) + '  -- 감쇠계수 (개체용)',
+    'GachaConfig.luck  = ' + luck + '  -- 행운력 (%)',
+    'GachaConfig.n_exp = ' + n_exp.toFixed(1) + '  -- 집중력',
+    '',
+    'return GachaConfig',
+  ];
+  const lua = lines.join('
+');
+  const blob = new Blob([lua], {type: 'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'GachaConfig.lua';
+  a.click();
+}
+
+currentZone=6;
+loadFromServer();
+</script>
+</body>
+</html>
