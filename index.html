@@ -514,8 +514,7 @@ function exportConfig() {
     '',
     'return GachaConfig',
   ];
-  const lua = lines.join('
-');
+  const lua = lines.join(String.fromCharCode(10));
   const blob = new Blob([lua], {type: 'text/plain'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
