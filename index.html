@@ -138,6 +138,11 @@ input[type=range]::-moz-range-thumb {
     <input type="range" min="0" max="50" value="10" step="5" id="n-sl">
     <span class="ctrl-val" id="n-v">1.0</span>
   </div>
+  <div class="ctrl-row">
+    <span class="ctrl-label">창 갯수 N<small>별로직 4단계</small></span>
+    <input type="range" min="1" max="10" value="5" step="1" id="spear-sl">
+    <span class="ctrl-val" id="spear-v">5개</span>
+  </div>
 </div>
 
 <div class="card">
@@ -145,38 +150,53 @@ input[type=range]::-moz-range-thumb {
   <div class="zone-grid" id="zone-grid"></div>
   <div class="divider"></div>
   <div id="s1-result" style="display:none">
+
     <p class="sec-label" style="margin-bottom:8px">
       등급별 등장 확률
       <span style="font-weight:400;font-size:10px;color:#ccc;margin-left:4px">— 클릭하면 개체 확률 펼침</span>
     </p>
     <div id="grade-blocks"></div>
 
+    <div class="divider"></div>
+
+    <p class="sec-label" style="margin-bottom:6px">
+      별 갯수 분포
+      <span style="font-weight:400;font-size:10px;color:#ccc;margin-left:4px">— 별로직 발동 시 결과</span>
+    </p>
+    <div style="font-size:12px;color:#888;margin-bottom:8px">
+      별로직 발동 확률 <span style="font-weight:700;color:#1a1a1a" id="disp-nat-prob">—</span>%
+      &nbsp;·&nbsp; 창 <span id="disp-spear">5</span>개
+      &nbsp;·&nbsp; 풀 <span id="disp-m">—</span>종
+    </div>
+    <div id="star-dist-rows"></div>
+
     <div class="formula-section">
+
       <div class="formula-block">
-        <div class="f-title">1단계 — 등급 선택 확률</div>
+        <div class="f-title">브레인롯 뽑기 — 등급 선택 확률</div>
         <div class="f-line">
-          <span class="f-expr">P(gi) = (1 − t) × P_base(gi)  +  t × P_luck(gi)</span>
+          <span class="f-expr">등급확률(gi) = (1 − t) × 기본분포(gi)  +  t × 행운분포(gi)</span>
         </div>
         <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">기본분포(gi)</span></span>
+          <span class="f-comment">가중치 = 1 + r1×(k−1−gi)  — 하위 등급일수록 가중치 높음</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">행운분포(gi)</span></span>
+          <span class="f-comment">가중치 = (gi+1)^n  — 상위 등급일수록 가중치 높음</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">t</span>  = L / 1000 = <span class="f-val" id="disp-t">0.00</span></span>
+          <span class="f-comment">행운력 혼합 비율 (0=기본분포, 1=행운분포)</span>
+        </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">gi</span></span>
           <span class="f-comment">등급 인덱스 — 0=Common · 1=Rare · 2=Epic · 3=Legendary · 4=Mythic · 5=Brainrot God · 6=Secret · 7=OG</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">k</span></span>
-          <span class="f-comment">창이 떨어진 존의 최고 등급 gi + 1 &nbsp;(예: Secret존 → k=7, OG존 → k=8)</span>
-        </div>
-        <div class="f-line">
-          <span class="f-expr"><span class="f-var">t</span>  = L / 1000 = <span class="f-val" id="disp-t">0.00</span></span>
-          <span class="f-comment">행운력 혼합 비율 (0=기본분포 그대로, 1=행운분포로 완전 전환)</span>
-        </div>
-        <div class="f-line">
-          <span class="f-expr"><span class="f-var">P_base</span></span>
-          <span class="f-comment">W_base(gi) = 1 + r1×(k−1−gi) 로 정규화 — r1 클수록 하위 등급이 더 자주 등장</span>
-        </div>
-        <div class="f-line">
-          <span class="f-expr"><span class="f-var">P_luck</span></span>
-          <span class="f-comment">W_luck(gi) = (gi+1)^n 으로 정규화 — n=0이면 균등, n 클수록 최상위에 집중</span>
+          <span class="f-comment">존의 최고 등급 gi+1  (Secret존=7, OG존=8)</span>
         </div>
         <div class="f-divider"></div>
         <div class="f-line">
@@ -185,36 +205,103 @@ input[type=range]::-moz-range-thumb {
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">L</span>  = <span class="f-val" id="disp-l">0</span>%</span>
-          <span class="f-comment">행운력 — 클수록 P_luck 비중 증가</span>
+          <span class="f-comment">행운력</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">n</span>  = <span class="f-val" id="disp-n">1.0</span></span>
-          <span class="f-comment">집중력 — 클수록 행운 효과가 최상위 등급에만 집중</span>
+          <span class="f-comment">집중력</span>
         </div>
       </div>
 
       <div class="formula-block">
-        <div class="f-title">2단계 — 등급 내 개체 선택 확률</div>
+        <div class="f-title">브레인롯 뽑기 — 등급 내 개체 선택 확률</div>
         <div class="f-line">
-          <span class="f-expr">W(j) = 1 + r2 × rank[j]</span>
+          <span class="f-expr">가중치(j) = 1 + r2 × rank[j]</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr">개체확률(j) = 가중치(j) / 전체 가중치 합</span>
         </div>
         <div class="f-divider"></div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">j</span></span>
-          <span class="f-comment">등급 내 개별 브레인롯</span>
-        </div>
-        <div class="f-line">
           <span class="f-expr"><span class="f-var">rank[j]</span></span>
-          <span class="f-comment">수익 내림차순 순위 (0 = 최고수익, 동수는 같은 rank)</span>
+          <span class="f-comment">수익 내림차순 순위 (0=최고수익, 동수는 같은 rank)</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">r2</span> = <span class="f-val" id="disp-r2">0.50</span></span>
           <span class="f-comment">감쇠계수 (개체용) — 클수록 저수익 개체가 더 자주 등장</span>
         </div>
       </div>
+
+      <div class="formula-block">
+        <div class="f-title">별로직 1단계 — 발동 확률</div>
+        <div class="f-line">
+          <span class="f-expr">발동 확률 = 1 − perm(M, N) / M^N</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">perm(M, N)</span></span>
+          <span class="f-comment">M × (M−1) × ... × (M−N+1)  — 창 N개가 모두 다른 브레인롯일 경우의 수</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">M^N</span></span>
+          <span class="f-comment">전체 경우의 수</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr">현재 발동 확률 = <span class="f-val" id="disp-nat-prob2">—</span>%</span>
+          <span class="f-comment">N=<span id="disp-spear2">—</span>개, M=<span id="disp-m2">—</span>종</span>
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="f-title">별로직 2단계 — 브레인롯 등급 선택</div>
+        <div class="f-line">
+          <span class="f-expr">브레인롯 뽑기 등급 선택 확률과 동일</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">주의</span></span>
+          <span class="f-comment">3단계에서 독립시행 결과에 없는 브레인롯만 후보로 사용</span>
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="f-title">별로직 3단계 — 등급 내 개체 선택</div>
+        <div class="f-line">
+          <span class="f-expr">브레인롯 뽑기 개체 선택 확률과 동일</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">주의</span></span>
+          <span class="f-comment">독립시행에서 이미 뽑힌 브레인롯은 후보에서 제외</span>
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="f-title">별로직 4단계 — 별 갯수 정하기 (룰렛)</div>
+        <div class="f-line">
+          <span class="f-expr">가중치(k) = base^(k−2) × k^(n×t)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr">base = (N/M)^(0.5×(1−t))</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">k</span></span>
+          <span class="f-comment">별 갯수 (2~N) — 가중치가 높을수록 더 자주 뽑힘</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">t</span>  = L / 4000 = <span class="f-val" id="disp-ts">0.0000</span></span>
+          <span class="f-comment">행운력 조절값 (L=0→t=0, L=1000%→t=0.25)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">n</span>  = <span class="f-val" id="disp-ns">1.0</span></span>
+          <span class="f-comment">집중력 — 클수록 행운력 효과가 고별에 집중</span>
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
 
 <div class="card" style="padding:14px 20px">
   <p class="sec-label" style="margin-bottom:10px">서버 동기화</p>
@@ -225,8 +312,8 @@ input[type=range]::-moz-range-thumb {
     <button onclick="saveToServer()" style="flex:1;min-width:130px;padding:10px 12px;border:1px solid #1a1a1a;border-radius:9px;background:#1a1a1a;font-family:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer">
       ↑ 서버에 저장
     </button>
-    <button onclick="exportConfig()" style="flex:1;min-width:130px;padding:10px 12px;border:1px solid #7F77DD;border-radius:9px;background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:#7F77DD;cursor:pointer">
-      ⬇ Config.lua 저장
+    <button onclick="exportGachaSystem()" style="flex:1;min-width:130px;padding:10px 12px;border:1px solid #7F77DD;border-radius:9px;background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:#7F77DD;cursor:pointer">
+      ⬇ GachaSystem.lua 저장
     </button>
   </div>
   <div id="sync-status" style="font-size:12px;color:#aaa">페이지 로드 시 자동으로 서버에서 불러옵니다</div>
@@ -324,13 +411,78 @@ const BR = {
   ],
 };
 
-let r1=0.5, r2=0.5, luck=0, n_exp=1.0, currentZone=null;
+let r1=0.5, r2=0.5, luck=0, n_exp=1.0, spearCount=5, currentZone=null;
 const openGrades = new Set();
 
 function fmtInc(v) {
   if (v>=1000000) return (v/1000000).toFixed(1)+'M';
   if (v>=1000) return Math.round(v/1000)+'K';
   return v;
+}
+
+function calcPerm(M, N) {
+  // M × (M-1) × ... × (M-N+1)
+  let r = 1;
+  for (let i = 0; i < N; i++) r *= (M - i);
+  return r;
+}
+
+function calcNatProb(N, M) {
+  // 자연중복 발동 확률 = 1 - perm(M,N) / M^N
+  if (N > M) return 100;
+  const nodup = calcPerm(M, N) / Math.pow(M, N);
+  return (1 - nodup) * 100;
+}
+
+function calcStarDist(N, M, L, n) {
+  // W(k) = (N/M)^((k-2)/2 * (1-t)) * k^(n*t),  t = L/4000
+  const t = L / 4000;
+  const w = [];
+  for (let k = 2; k <= N; k++) {
+    const w1 = Math.pow(N/M, (k-2)/2 * (1-t));
+    const w2 = Math.pow(k, n * t);
+    w.push(w1 * w2);
+  }
+  const s = w.reduce((a,b)=>a+b, 0);
+  return w.map(x => x/s*100);
+}
+
+function renderStarDist(N, M) {
+  const ts = (luck / 4000).toFixed(4);
+  const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+  setEl('disp-spear', N);
+  setEl('disp-m', M);
+  setEl('disp-ts', ts);
+  setEl('disp-ns', n_exp.toFixed(1));
+
+  const natProb = calcNatProb(N, M);
+  setEl('disp-nat-prob', natProb.toFixed(4));
+  setEl('disp-nat-prob2', natProb.toFixed(4));
+  setEl('disp-spear2', N);
+  setEl('disp-m2', M);
+
+  const dist = calcStarDist(N, M, luck, n_exp);
+  const maxP = Math.max(...dist);
+  const expected = dist.reduce((s,p,i) => s + (i+2)*p/100, 0);
+
+  const STAR_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5','#E24B4A','#639922'];
+  const container = document.getElementById('star-dist-rows');
+  container.innerHTML = '';
+  dist.forEach((p, i) => {
+    const k = i + 2;
+    const bw = maxP > 0 ? p/maxP*100 : 0;
+    const color = STAR_COLORS[i % STAR_COLORS.length];
+    const pStr = p >= 0.0001 ? p.toFixed(4)+'%' : '<0.0001%';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;padding:5px 7px;border-radius:6px;background:#f5f4f0;';
+    row.innerHTML =
+      '<span style="font-size:12px;font-weight:700;color:#1a1a1a;min-width:24px">★'+k+'</span>'+
+      '<div style="flex:1;height:16px;background:#e8e7e3;border-radius:3px;overflow:hidden">'+
+        '<div style="height:100%;border-radius:3px;transition:width .25s ease;width:'+bw.toFixed(2)+'%;background:'+color+'"></div>'+
+      '</div>'+
+      '<span style="font-size:11px;font-weight:600;color:#555;min-width:76px;text-align:right;font-family:\'SF Mono\',monospace">'+pStr+'</span>';
+    container.appendChild(row);
+  });
 }
 
 function calcGradeProbs(k, tl) {
@@ -440,12 +592,18 @@ function render() {
     block.appendChild(buildBrPanel(gi,color));
     gb.appendChild(block);
   }
+
+  // 존의 브레인롯 풀 종수 계산
+  const GRADE_POOL_SIZES = [6,15,23,38,49,64,89,91];
+  const M = GRADE_POOL_SIZES[z.k-1];
+  renderStarDist(spearCount, M);
 }
 
 document.getElementById('r1-sl').oninput=e=>{r1=e.target.value/100;document.getElementById('r1-v').textContent=r1.toFixed(2);render();};
 document.getElementById('r2-sl').oninput=e=>{r2=e.target.value/100;document.getElementById('r2-v').textContent=r2.toFixed(2);render();};
 document.getElementById('luck-sl').oninput=e=>{luck=+e.target.value;document.getElementById('luck-v').textContent=luck+'%';render();};
 document.getElementById('n-sl').oninput=e=>{n_exp=e.target.value/10;document.getElementById('n-v').textContent=n_exp.toFixed(1);render();};
+document.getElementById('spear-sl').oninput=e=>{spearCount=+e.target.value;document.getElementById('spear-v').textContent=spearCount+'개';render();};
 
 
 const API_URL = 'https://zbrsowxhjl.execute-api.us-east-1.amazonaws.com/config';
@@ -499,26 +657,164 @@ async function saveToServer() {
   }
 }
 
-function exportConfig() {
+function exportGachaSystem() {
   const now = new Date().toLocaleString('ko-KR');
   const lines = [
-    '-- GachaConfig.lua',
-    '-- 생성 시각: ' + now,
-    '',
-    'local GachaConfig = {}',
-    '',
-    'GachaConfig.r1    = ' + r1.toFixed(2) + '  -- 감쇠계수 (등급용)',
-    'GachaConfig.r2    = ' + r2.toFixed(2) + '  -- 감쇠계수 (개체용)',
-    'GachaConfig.luck  = ' + luck + '  -- 행운력 (%)',
-    'GachaConfig.n_exp = ' + n_exp.toFixed(1) + '  -- 집중력',
-    '',
-    'return GachaConfig',
+'-- GachaSystem.lua',
+'-- 창던지기 확률 계산기에서 자동 생성 | 생성 시각: ' + now,
+'--',
+'-- 사용법:',
+'--   1. 이 파일을 Roblox 스크립트에 복붙',
+'--   2. getBrainrotList(grade) 함수를 실제 데이터에 연결',
+'--      각 항목은 { id=string, rank=number } 형태여야 함 (rank: 수익 내림차순 순위, 0=최고수익)',
+'',
+'local GachaSystem = {}',
+'',
+'-- ============================',
+'-- 계수값 (HTML 계산기에서 설정)',
+'-- ============================',
+'local r1    = ' + r1.toFixed(2) + '  -- 감쇠계수 (등급용) - 클수록 하위 등급이 더 자주 등장',
+'local r2    = ' + r2.toFixed(2) + '  -- 감쇠계수 (개체용) - 클수록 저수익 개체가 더 자주 등장',
+'local LUCK  = ' + luck + '           -- 행운력 (0~1000%)',
+'local N_EXP = ' + n_exp.toFixed(1) + '         -- 집중력 (0~5.0) - 클수록 행운력 효과가 최상위에 집중',
+'local SPEAR = ' + spearCount + '           -- 창 갯수 (1~10)',
+'',
+'-- 등급별 브레인롯 풀 종수',
+'local POOL_SIZE = {',
+'    [1]=6,  [2]=15, [3]=23, [4]=38,',
+'    [5]=49, [6]=64, [7]=89, [8]=91,',
+'}',
+'',
+'-- ============================',
+'-- 함수 1: 별로직 1단계 - 자연중복 발동 확률',
+'-- N: 창 갯수, M: 존의 브레인롯 풀 종수',
+'-- 반환값: 0~1 사이 발동 확률',
+'-- ============================',
+'function GachaSystem.calcNatProb(N, M)',
+'    local perm = 1',
+'    for i = 0, N-1 do',
+'        perm = perm * (M - i)  -- perm(M,N) = M x (M-1) x ... x (M-N+1)',
+'    end',
+'    local nodup = perm / (M ^ N)  -- 중복 없을 확률',
+'    return 1 - nodup              -- 자연중복 발동 확률',
+'end',
+'',
+'-- ============================',
+'-- 함수 2: 별로직 4단계 - 별 갯수 룰렛',
+'-- N: 창 갯수, M: 존의 브레인롯 풀 종수',
+'-- 반환값: 별 갯수 (2~N)',
+'-- ============================',
+'function GachaSystem.rollStarCount(N, M)',
+'    local t = LUCK / 4000  -- 행운력 조절값 (LUCK=1000이면 t=0.25)',
+'',
+'    -- base: 창 많고 존 낮을수록 커짐 -> 고별 유리',
+'    local base = (N / M) ^ (0.5 * (1 - t))',
+'',
+'    -- 각 별 갯수(2~N)의 가중치 계산',
+'    local weights = {}',
+'    local total = 0',
+'    for k = 2, N do',
+'        local w = (base ^ (k - 2)) * (k ^ (N_EXP * t))',
+'        weights[k] = w',
+'        total = total + w',
+'    end',
+'',
+'    -- 룰렛: 0~total 사이 난수로 별 갯수 선택',
+'    local r = math.random() * total',
+'    for k = 2, N do',
+'        r = r - weights[k]',
+'        if r <= 0 then return k end',
+'    end',
+'    return N',
+'end',
+'',
+'-- ============================',
+'-- 함수 3: 브레인롯 뽑기 - 등급 선택',
+'-- k: 존의 최고 등급+1 (예: Secret존=7, OG존=8)',
+'-- tl: 행운력 총합 (LUCK + 존 보너스)',
+'-- 반환값: 등급 인덱스 (0=Common ~ 7=OG)',
+'-- ============================',
+'function GachaSystem.rollGrade(k, tl)',
+'    local t = math.min(tl / 1000, 1)',
+'',
+'    -- 기본분포: 하위 등급일수록 자주 등장',
+'    local base_w = {}',
+'    local base_sum = 0',
+'    for gi = 0, k-1 do',
+'        base_w[gi] = 1 + r1 * (k - 1 - gi)',
+'        base_sum = base_sum + base_w[gi]',
+'    end',
+'',
+'    -- 행운분포: 상위 등급일수록 자주 등장',
+'    local luck_w = {}',
+'    local luck_sum = 0',
+'    for gi = 0, k-1 do',
+'        luck_w[gi] = (gi + 1) ^ N_EXP',
+'        luck_sum = luck_sum + luck_w[gi]',
+'    end',
+'',
+'    -- 최종 확률 = 기본분포와 행운분포를 t 비율로 혼합',
+'    local probs = {}',
+'    for gi = 0, k-1 do',
+'        probs[gi] = (1 - t) * (base_w[gi] / base_sum)',
+'                  + t       * (luck_w[gi] / luck_sum)',
+'    end',
+'',
+'    -- 룰렛: 높은 등급부터 체크',
+'    local r = math.random()',
+'    local cum = 0',
+'    for gi = k-1, 0, -1 do',
+'        cum = cum + probs[gi]',
+'        if r <= cum then return gi end',
+'    end',
+'    return 0',
+'end',
+'',
+'-- ============================',
+'-- 함수 4: 브레인롯 뽑기 - 등급 내 개체 선택',
+'-- grade: 등급 인덱스 (0=Common ~ 7=OG)',
+'-- excludeList: 이미 뽑힌 브레인롯 ID 목록 (별로직 3단계 중복 방지용)',
+'--              예) { ["Dragon Cannelloni"]=true, ["Meowl"]=true }',
+'-- 반환값: 브레인롯 ID',
+'-- ============================',
+'function GachaSystem.rollBrainrot(grade, excludeList)',
+'    -- getBrainrotList(grade): 개발자가 직접 연결',
+'    -- 반환 형태: { {id="Dragon Cannelloni", rank=0}, {id="Garamararam", rank=1}, ... }',
+'    local list = getBrainrotList(grade)',
+'',
+'    -- excludeList에 있는 브레인롯 제외',
+'    local candidates = {}',
+'    for _, b in ipairs(list) do',
+'        if not excludeList or not excludeList[b.id] then',
+'            table.insert(candidates, b)',
+'        end',
+'    end',
+'',
+'    -- 가중치: rank 높을수록(저수익일수록) 더 자주 등장',
+'    local weights = {}',
+'    local total = 0',
+'    for _, b in ipairs(candidates) do',
+'        local w = 1 + r2 * b.rank',
+'        table.insert(weights, { id=b.id, w=w })',
+'        total = total + w',
+'    end',
+'',
+'    -- 룰렛으로 개체 선택',
+'    local r = math.random() * total',
+'    for _, item in ipairs(weights) do',
+'        r = r - item.w',
+'        if r <= 0 then return item.id end',
+'    end',
+'    return weights[#weights].id',
+'end',
+'',
+'return GachaSystem',
   ];
   const lua = lines.join(String.fromCharCode(10));
   const blob = new Blob([lua], {type: 'text/plain'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'GachaConfig.lua';
+  a.download = 'GachaSystem.lua';
   a.click();
 }
 
