@@ -283,7 +283,7 @@ input[type=range]::-moz-range-thumb {
           <span class="f-expr">가중치(k) = base^(k−2) × k^(n×t)</span>
         </div>
         <div class="f-line">
-          <span class="f-expr">base = (N/M)^(0.5×(1−t))</span>
+          <span class="f-expr">base = min(1, (N/M)^(0.5×(1−t)))</span>
         </div>
         <div class="f-divider"></div>
         <div class="f-line">
@@ -435,11 +435,13 @@ function calcNatProb(N, M) {
 }
 
 function calcStarDist(N, M, L, n) {
-  // W(k) = (N/M)^((k-2)/2 * (1-t)) * k^(n*t),  t = L/4000
+  // base = min(1, (N/M)^(0.5*(1-t)))  — 1로 캡: N>=M이면 균등 분포
+  // W(k) = base^(k-2) * k^(n*t),  t = L/4000
   const t = L / 4000;
+  const base = Math.min(1, Math.pow(N/M, 0.5*(1-t)));
   const w = [];
   for (let k = 2; k <= N; k++) {
-    const w1 = Math.pow(N/M, (k-2)/2 * (1-t));
+    const w1 = Math.pow(base, k-2);
     const w2 = Math.pow(k, n * t);
     w.push(w1 * w2);
   }
@@ -714,7 +716,7 @@ function exportGachaSystem() {
 '    local t = LUCK / 4000  -- 행운력 조절값 (LUCK=1000이면 t=0.25)',
 '',
 '    -- base: 창 많고 존 낮을수록 커짐 -> 고별 유리',
-'    local base = (N / M) ^ (0.5 * (1 - t))',
+'    local base = math.min(1, (N / M) ^ (0.5 * (1 - t)))  -- 1로 캡: N>=M이면 균등 분포',
 '',
 '    -- 각 별 갯수(2~N)의 가중치 계산',
 '    local weights = {}',
