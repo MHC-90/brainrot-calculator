@@ -594,6 +594,8 @@ function render() {
   }
 
   // 존의 브레인롯 풀 종수 계산
+  // HTML에서는 선택된 존의 M을 기준으로 표시
+  // 실제 게임에서는 각 창의 존별 풀종수 평균값 사용 (소수 그대로)
   const GRADE_POOL_SIZES = [6,15,23,38,49,64,89,91];
   const M = GRADE_POOL_SIZES[z.k-1];
   renderStarDist(spearCount, M);
@@ -687,7 +689,10 @@ function exportGachaSystem() {
 '',
 '-- ============================',
 '-- 함수 1: 별로직 1단계 - 자연중복 발동 확률',
-'-- N: 창 갯수, M: 존의 브레인롯 풀 종수',
+'-- N: 창 갯수',
+'-- M: 각 창의 존별 풀종수 평균값 (소수 가능)',
+'--    계산: local total=0; for _,spear in ipairs(spears) do total+=POOL_SIZE[spear.zone] end',
+'--          local M = total / #spears',
 '-- 반환값: 0~1 사이 발동 확률',
 '-- ============================',
 'function GachaSystem.calcNatProb(N, M)',
@@ -701,7 +706,8 @@ function exportGachaSystem() {
 '',
 '-- ============================',
 '-- 함수 2: 별로직 4단계 - 별 갯수 룰렛',
-'-- N: 창 갯수, M: 존의 브레인롯 풀 종수',
+'-- N: 창 갯수',
+'-- M: 각 창의 존별 풀종수 평균값 (소수 가능) - calcNatProb와 동일하게 계산',
 '-- 반환값: 별 갯수 (2~N)',
 '-- ============================',
 'function GachaSystem.rollStarCount(N, M)',
