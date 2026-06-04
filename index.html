@@ -310,8 +310,8 @@ input[type=range]::-moz-range-thumb {
           <span class="f-comment">별 갯수 (2~N) — 가중치가 높을수록 더 자주 뽑힘</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">t</span>  = clamp(L / 4000, 0, 1) = <span class="f-val" id="disp-ts">0.0000</span></span>
-          <span class="f-comment">행운력 조절값 (L=1000%→0.25). L≥4000%면 1.0 상한 (이 기능 한정 캡)</span>
+          <span class="f-expr"><span class="f-var">t</span> = <span class="f-val" id="disp-ts">0.0000</span></span>
+          <span class="f-comment">L≤1000%: t = L/4000 (기존)  /  L>1000%: t = 0.25 + (L−1000)/30000 (천천히)  /  최대 1.0 상한</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">n</span>  = <span class="f-val" id="disp-ns">1.0</span></span>
@@ -443,10 +443,25 @@ function calcNatProb(N, M) {
   return (1 - nodup) * 100;
 }
 
+// [신규] 별로직 4단계 t 계산 — 분기 식
+//   L ≤ 1000%: t = L/4000 (기존과 동일, 0 → 0.25)
+//   L > 1000%: t = 0.25 + (L-1000)/30000 (천천히 증가, 4000% → 0.35)
+//   최대 1.0 상한 (룰렛 NaN/오버플로 방지)
+function calcStarT(L) {
+  let t;
+  if (L <= 1000) {
+    t = L / 4000;
+  } else {
+    t = 0.25 + (L - 1000) / 30000;
+  }
+  return Math.min(Math.max(t, 0), 1);
+}
+
 function calcStarDist(N, M, L, n) {
   // [게임 일치] base = (N/M)^(0.5*(1-t))  — min(1) 캡 없음
-  // W(k) = base^(k-2) * k^(n*t),  t = clamp(L/4000, 0, 1)  (이 기능 한정 L>4000% 는 4000% 로 간주)
-  const t = Math.min(Math.max(L / 4000, 0), 1);
+  // W(k) = base^(k-2) * k^(n*t)
+  // t = 분기 식 (calcStarT 참조)
+  const t = calcStarT(L);
   const base = Math.pow(N/M, 0.5*(1-t));
   const w = [];
   for (let k = 2; k <= N; k++) {
@@ -459,7 +474,7 @@ function calcStarDist(N, M, L, n) {
 }
 
 function renderStarDist(N, M) {
-  const ts = Math.min(Math.max(effLuck / 4000, 0), 1).toFixed(4);
+  const ts = calcStarT(effLuck).toFixed(4);
   const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
   setEl('disp-spear', N);
   setEl('disp-m', M);
@@ -746,9 +761,17 @@ function exportGachaSystem() {
 '-- 반환값: 별 갯수 (2~N)',
 '-- ============================',
 'function GachaSystem.rollStarCount(N, M)',
-'    -- [중복 보정 한정 캡] L > 4000% 는 4000% 로 간주 (t 상한 1.0)',
-'    -- t>1 의 overflow(룰렛 NaN) + 작은풀(N>M) 역효과를 함께 차단',
-'    local t = math.clamp(LUCK / 4000, 0, 1)',
+'    -- [변경] 분기 t 계산 (별 폭주 방지)',
+'    --   L ≤ 1000%: t = L/4000 (기존, 0 → 0.25)',
+'    --   L > 1000%: t = 0.25 + (L-1000)/30000 (천천히 증가, 4000% → 0.35)',
+'    --   t ≤ 1.0 상한 (룰렛 NaN/오버플로 방지)',
+'    local t',
+'    if LUCK <= 1000 then',
+'        t = LUCK / 4000',
+'    else',
+'        t = 0.25 + (LUCK - 1000) / 30000',
+'    end',
+'    t = math.clamp(t, 0, 1)',
 '',
 '    -- base: 창 많고 존 낮을수록 커짐 -> 고별 유리 (min 캡 없음, t<=1 라 역효과 없음)',
 '    local base = (N / M) ^ (0.5 * (1 - t))',
