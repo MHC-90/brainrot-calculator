@@ -32,6 +32,7 @@ input[type=range] {
   flex:1; -webkit-appearance:none; height:4px;
   background:#e0e0e0; border-radius:2px; outline:none; cursor:pointer;
 }
+input[type=range]:disabled { cursor:not-allowed; opacity:.5; }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance:none; width:17px; height:17px;
   border-radius:50%; background:#1a1a1a; cursor:pointer;
@@ -50,6 +51,9 @@ input[type=range]::-moz-range-thumb {
 .zone-btn:hover { background:#f5f4f0; }
 .zone-btn.active { background:#1a1a1a; color:#fff; border-color:#1a1a1a; font-weight:600; }
 .divider { height:1px; background:#f0efe9; margin:14px 0; }
+
+.splus-row { display:flex; align-items:center; gap:12px; margin-top:13px; transition:opacity .15s; }
+.splus-row .ctrl-label { min-width:100px; }
 
 .grade-block { margin:3px 0; border-radius:8px; overflow:hidden; }
 .grade-bar-row {
@@ -130,7 +134,7 @@ input[type=range]::-moz-range-thumb {
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">행운력 L%</span>
-    <input type="range" min="0" max="1000" value="0" step="10" id="luck-sl">
+    <input type="range" min="0" max="4000" value="0" step="10" id="luck-sl">
     <span class="ctrl-val" id="luck-v">0%</span>
   </div>
   <div class="ctrl-row">
@@ -148,8 +152,19 @@ input[type=range]::-moz-range-thumb {
 <div class="card">
   <p class="sec-label">창이 떨어진 존</p>
   <div class="zone-grid" id="zone-grid"></div>
+
+  <div class="splus-row" id="splus-row">
+    <span class="ctrl-label">Secret+ 보너스<small id="splus-note">Secret존 전용</small></span>
+    <input type="range" min="0" max="1000" value="0" step="10" id="splus-sl">
+    <span class="ctrl-val" id="splus-v">+0%</span>
+  </div>
+
   <div class="divider"></div>
   <div id="s1-result" style="display:none">
+
+    <div style="font-size:12px;color:#888;margin-bottom:10px">
+      유효 행운력 = L + Secret+ = <span style="font-weight:700;color:#1a1a1a" id="disp-effluck">0</span>%
+    </div>
 
     <p class="sec-label" style="margin-bottom:8px">
       등급별 등장 확률
@@ -184,19 +199,23 @@ input[type=range]::-moz-range-thumb {
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">행운분포(gi)</span></span>
-          <span class="f-comment">가중치 = (gi+1)^n  — 상위 등급일수록 가중치 높음</span>
+          <span class="f-comment">가중치 = (gi+1)^eff_n  — 상위 등급일수록 가중치 높음</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">t</span>  = L / 1000 = <span class="f-val" id="disp-t">0.00</span></span>
-          <span class="f-comment">행운력 혼합 비율 (0=기본분포, 1=행운분포)</span>
+          <span class="f-expr"><span class="f-var">t</span>  = min(L / 1000, 1) = <span class="f-val" id="disp-t">0.00</span></span>
+          <span class="f-comment">행운력 혼합 비율 (0=기본분포, 1=행운분포). L≥1000%면 1.0 포화</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">eff_n</span> = n + extraExp = <span class="f-val" id="disp-eff">1.0</span></span>
+          <span class="f-comment">extraExp = clamp((L−1000)/1000, 0, 100) = <span class="f-val" id="disp-extra">0.00</span>  — L>1000% 구간에서 상위 등급 집중을 추가 강화</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">gi</span></span>
-          <span class="f-comment">등급 인덱스 — 0=Common · 1=Rare · 2=Epic · 3=Legendary · 4=Mythic · 5=Brainrot God · 6=Secret · 7=OG</span>
+          <span class="f-comment">등급 인덱스 — 0=Common · 1=Rare · 2=Epic · 3=Legendary · 4=Mythic · 5=Brainrot God · 6=Secret</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">k</span></span>
-          <span class="f-comment">존의 최고 등급 gi+1  (Secret존=7, OG존=8)</span>
+          <span class="f-comment">존의 최고 등급 gi+1  (Common존=1, Secret존=7)</span>
         </div>
         <div class="f-divider"></div>
         <div class="f-line">
@@ -205,7 +224,7 @@ input[type=range]::-moz-range-thumb {
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">L</span>  = <span class="f-val" id="disp-l">0</span>%</span>
-          <span class="f-comment">행운력</span>
+          <span class="f-comment">유효 행운력 (행운력 L + Secret+ 보너스)</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">n</span>  = <span class="f-val" id="disp-n">1.0</span></span>
@@ -283,7 +302,7 @@ input[type=range]::-moz-range-thumb {
           <span class="f-expr">가중치(k) = base^(k−2) × k^(n×t)</span>
         </div>
         <div class="f-line">
-          <span class="f-expr">base = min(1, (N/M)^(0.5×(1−t)))</span>
+          <span class="f-expr">base = (N/M)^(0.5×(1−t))</span>
         </div>
         <div class="f-divider"></div>
         <div class="f-line">
@@ -291,8 +310,8 @@ input[type=range]::-moz-range-thumb {
           <span class="f-comment">별 갯수 (2~N) — 가중치가 높을수록 더 자주 뽑힘</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">t</span>  = L / 4000 = <span class="f-val" id="disp-ts">0.0000</span></span>
-          <span class="f-comment">행운력 조절값 (L=0→t=0, L=1000%→t=0.25)</span>
+          <span class="f-expr"><span class="f-var">t</span>  = clamp(L / 4000, 0, 1) = <span class="f-val" id="disp-ts">0.0000</span></span>
+          <span class="f-comment">행운력 조절값 (L=1000%→0.25). L≥4000%면 1.0 상한 (이 기능 한정 캡)</span>
         </div>
         <div class="f-line">
           <span class="f-expr"><span class="f-var">n</span>  = <span class="f-val" id="disp-ns">1.0</span></span>
@@ -323,24 +342,16 @@ input[type=range]::-moz-range-thumb {
 </div>
 
 <script>
-const GRADE_NAMES  = ['Common','Rare','Epic','Legendary','Mythic','Brainrot God','Secret','OG'];
-const GRADE_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5','#E24B4A'];
+const GRADE_NAMES  = ['Common','Rare','Epic','Legendary','Mythic','Brainrot God','Secret'];
+const GRADE_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5'];
 
+// OG 등급/존 삭제 (최고 등급 = Secret, k 최대 7). Secret+ 보너스는 슬라이더로 처리.
 const ZONES = [
-  {n:'Common존',   k:1,el:0}, {n:'Rare존',      k:2,el:0},
-  {n:'Epic존',     k:3,el:0}, {n:'Legendary존', k:4,el:0},
-  {n:'Mythic존',   k:5,el:0},
+  {n:'Common존',   k:1}, {n:'Rare존',      k:2},
+  {n:'Epic존',     k:3}, {n:'Legendary존', k:4},
+  {n:'Mythic존',   k:5},
   null,
-  {n:'B.God존',    k:6,el:0}, {n:'Secret존',    k:7,el:0},
-  {n:'OG존',       k:8,el:0},
-  null,
-  {n:'Secret+10%', k:7,el:10},{n:'Secret+20%',  k:7,el:20},
-  {n:'Secret+30%', k:7,el:30},{n:'Secret+40%',  k:7,el:40},
-  {n:'Secret+50%', k:7,el:50},
-  null,
-  {n:'OG+10%',     k:8,el:10},{n:'OG+20%',      k:8,el:20},
-  {n:'OG+30%',     k:8,el:30},{n:'OG+40%',      k:8,el:40},
-  {n:'OG+50%',     k:8,el:50},
+  {n:'B.God존',    k:6}, {n:'Secret존',    k:7},
 ];
 
 const BR = {
@@ -405,13 +416,10 @@ const BR = {
     {n:'Torrtuginni Dragonfrutini',inc:325000,r:21},{n:'Karkerkar Kurkur',inc:300000,r:22},
     {n:'La Vacca Saturno Saturnita',inc:300000,r:22},
   ],
-  'OG':[
-    {n:'Strawberry Elephant',inc:70000000,r:0},
-    {n:'Meowl',inc:50000000,r:1},
-  ],
 };
 
-let r1=0.5, r2=0.5, luck=0, n_exp=1.0, spearCount=5, currentZone=null;
+let r1=0.5, r2=0.5, luck=0, n_exp=1.0, spearCount=5, secretPlus=0, currentZone=null;
+let effLuck=0;  // 유효 행운력 = luck + (Secret존이면 secretPlus)
 const openGrades = new Set();
 
 function fmtInc(v) {
@@ -429,16 +437,17 @@ function calcPerm(M, N) {
 
 function calcNatProb(N, M) {
   // 자연중복 발동 확률 = 1 - perm(M,N) / M^N
+  if (N < 2) return 0;
   if (N > M) return 100;
   const nodup = calcPerm(M, N) / Math.pow(M, N);
   return (1 - nodup) * 100;
 }
 
 function calcStarDist(N, M, L, n) {
-  // base = min(1, (N/M)^(0.5*(1-t)))  — 1로 캡: N>=M이면 균등 분포
-  // W(k) = base^(k-2) * k^(n*t),  t = L/4000
-  const t = L / 4000;
-  const base = Math.min(1, Math.pow(N/M, 0.5*(1-t)));
+  // [게임 일치] base = (N/M)^(0.5*(1-t))  — min(1) 캡 없음
+  // W(k) = base^(k-2) * k^(n*t),  t = clamp(L/4000, 0, 1)  (이 기능 한정 L>4000% 는 4000% 로 간주)
+  const t = Math.min(Math.max(L / 4000, 0), 1);
+  const base = Math.pow(N/M, 0.5*(1-t));
   const w = [];
   for (let k = 2; k <= N; k++) {
     const w1 = Math.pow(base, k-2);
@@ -450,7 +459,7 @@ function calcStarDist(N, M, L, n) {
 }
 
 function renderStarDist(N, M) {
-  const ts = (luck / 4000).toFixed(4);
+  const ts = Math.min(Math.max(effLuck / 4000, 0), 1).toFixed(4);
   const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
   setEl('disp-spear', N);
   setEl('disp-m', M);
@@ -463,13 +472,18 @@ function renderStarDist(N, M) {
   setEl('disp-spear2', N);
   setEl('disp-m2', M);
 
-  const dist = calcStarDist(N, M, luck, n_exp);
-  const maxP = Math.max(...dist);
-  const expected = dist.reduce((s,p,i) => s + (i+2)*p/100, 0);
-
-  const STAR_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5','#E24B4A','#639922'];
   const container = document.getElementById('star-dist-rows');
   container.innerHTML = '';
+
+  if (N < 2) {
+    container.innerHTML = '<div style="font-size:12px;color:#bbb;padding:6px 7px">창이 2개 이상이어야 별로직이 발동합니다.</div>';
+    return;
+  }
+
+  const dist = calcStarDist(N, M, effLuck, n_exp);
+  const maxP = Math.max(...dist);
+
+  const STAR_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5','#E24B4A','#639922'];
   dist.forEach((p, i) => {
     const k = i + 2;
     const bw = maxP > 0 ? p/maxP*100 : 0;
@@ -492,14 +506,18 @@ function calcGradeProbs(k, tl) {
 
   const t = Math.min(tl / 1000, 1);
 
-  // P_base: r1 감쇠 분포
+  // [게임 일치] L>1000% 구간 강화: effective_n_exp = n + extraExp
+  //   extraExp = clamp((L-1000)/1000, 0, 100)  — t 포화 후 행운분포 모양을 더 뾰족하게
+  const extraExp = Math.min(Math.max((tl - 1000) / 1000, 0), 100);
+  const eff = n_exp + extraExp;
+
+  // P_base: r1 감쇠 분포 (하위 등급 가중)
   const wb = Array.from({length:k}, (_,gi) => 1 + r1*(k-1-gi));
   const sb = wb.reduce((a,b)=>a+b, 0);
   const pb = wb.map(w => w/sb);
 
-  // P_luck: 상위 집중 분포 — W_luck(gi) = (gi+1)^n
-  // n=0이면 균등, n 클수록 최상위에 집중. Common도 자연스럽게 참여 (1^n = 1)
-  const wl = Array.from({length:k}, (_,gi) => Math.pow(gi + 1, n_exp));
+  // P_luck: 상위 집중 분포 — W_luck(gi) = (gi+1)^eff
+  const wl = Array.from({length:k}, (_,gi) => Math.pow(gi + 1, eff));
   const sl = wl.reduce((a,b)=>a+b, 0);
   const pl = wl.map(w => w/sl);
 
@@ -549,22 +567,36 @@ ZONES.forEach((z,zi)=>{
   zg.appendChild(btn);
 });
 
-function updateDispValues(tl) {
+function updateDispValues() {
   document.getElementById('disp-r1').textContent = r1.toFixed(2);
   document.getElementById('disp-r2').textContent = r2.toFixed(2);
-  document.getElementById('disp-l').textContent  = luck;
+  document.getElementById('disp-l').textContent  = effLuck;
   document.getElementById('disp-n').textContent  = n_exp.toFixed(1);
-  document.getElementById('disp-t').textContent  = Math.min(tl/1000,1).toFixed(2);
+  document.getElementById('disp-t').textContent  = Math.min(effLuck/1000,1).toFixed(2);
+  const extraExp = Math.min(Math.max((effLuck - 1000) / 1000, 0), 100);
+  document.getElementById('disp-extra').textContent = extraExp.toFixed(2);
+  document.getElementById('disp-eff').textContent   = (n_exp + extraExp).toFixed(1);
 }
 
 function render() {
   if(currentZone===null) return;
   zg.querySelectorAll('.zone-btn').forEach(b=>b.classList.toggle('active',+b.dataset.zi===currentZone));
   const z=ZONES[currentZone];
-  const tl=luck+z.el;
-  updateDispValues(tl);
 
-  const probs=calcGradeProbs(z.k, tl);
+  // Secret+ 보너스: Secret존(k=7)에서만 적용. 그 외 존은 슬라이더 비활성 + 회색.
+  const isSecret = z.k === 7;
+  const splusRow = document.getElementById('splus-row');
+  const splusSl  = document.getElementById('splus-sl');
+  const splusNote= document.getElementById('splus-note');
+  splusSl.disabled = !isSecret;
+  splusRow.style.opacity = isSecret ? '1' : '0.4';
+  splusNote.textContent = isSecret ? '깊이당 +10%' : 'Secret존 전용';
+
+  effLuck = luck + (isSecret ? secretPlus : 0);
+  document.getElementById('disp-effluck').textContent = effLuck;
+  updateDispValues();
+
+  const probs=calcGradeProbs(z.k, effLuck);
   const maxP=Math.max(...probs);
 
   document.getElementById('s1-result').style.display='block';
@@ -595,10 +627,9 @@ function render() {
     gb.appendChild(block);
   }
 
-  // 존의 브레인롯 풀 종수 계산
-  // HTML에서는 선택된 존의 M을 기준으로 표시
-  // 실제 게임에서는 각 창의 존별 풀종수 평균값 사용 (소수 그대로)
-  const GRADE_POOL_SIZES = [6,15,23,38,49,64,89,91];
+  // 존의 브레인롯 풀 종수 (게임 POOL_SIZE 와 동일, k=1..7)
+  // 실제 게임에서는 각 창의 존별 풀종수 평균값(소수) 사용 — 여기선 선택 존 기준 단일값.
+  const GRADE_POOL_SIZES = [6,15,23,38,49,64,91];
   const M = GRADE_POOL_SIZES[z.k-1];
   renderStarDist(spearCount, M);
 }
@@ -608,6 +639,7 @@ document.getElementById('r2-sl').oninput=e=>{r2=e.target.value/100;document.getE
 document.getElementById('luck-sl').oninput=e=>{luck=+e.target.value;document.getElementById('luck-v').textContent=luck+'%';render();};
 document.getElementById('n-sl').oninput=e=>{n_exp=e.target.value/10;document.getElementById('n-v').textContent=n_exp.toFixed(1);render();};
 document.getElementById('spear-sl').oninput=e=>{spearCount=+e.target.value;document.getElementById('spear-v').textContent=spearCount+'개';render();};
+document.getElementById('splus-sl').oninput=e=>{secretPlus=+e.target.value;document.getElementById('splus-v').textContent='+'+secretPlus+'%';render();};
 
 
 const API_URL = 'https://zbrsowxhjl.execute-api.us-east-1.amazonaws.com/config';
@@ -617,6 +649,7 @@ function applyConfig(data) {
   r2    = parseFloat(data.r2)  || 0.5;
   luck  = parseInt(data.luck)  || 0;
   n_exp = parseFloat(data.n)   || 1.0;
+  if (luck > 4000) luck = 4000;
   document.getElementById('r1-sl').value   = Math.round(r1*100);
   document.getElementById('r2-sl').value   = Math.round(r2*100);
   document.getElementById('luck-sl').value = luck;
@@ -679,14 +712,14 @@ function exportGachaSystem() {
 '-- ============================',
 'local r1    = ' + r1.toFixed(2) + '  -- 감쇠계수 (등급용) - 클수록 하위 등급이 더 자주 등장',
 'local r2    = ' + r2.toFixed(2) + '  -- 감쇠계수 (개체용) - 클수록 저수익 개체가 더 자주 등장',
-'local LUCK  = ' + luck + '           -- 행운력 (0~1000%)',
+'local LUCK  = ' + luck + '           -- 행운력 (0~4000%)',
 'local N_EXP = ' + n_exp.toFixed(1) + '         -- 집중력 (0~5.0) - 클수록 행운력 효과가 최상위에 집중',
 'local SPEAR = ' + spearCount + '           -- 창 갯수 (1~10)',
 '',
-'-- 등급별 브레인롯 풀 종수',
+'-- 등급별 브레인롯 풀 종수 (Common~Secret, OG 삭제)',
 'local POOL_SIZE = {',
 '    [1]=6,  [2]=15, [3]=23, [4]=38,',
-'    [5]=49, [6]=64, [7]=89, [8]=91,',
+'    [5]=49, [6]=64, [7]=91,',
 '}',
 '',
 '-- ============================',
@@ -713,10 +746,12 @@ function exportGachaSystem() {
 '-- 반환값: 별 갯수 (2~N)',
 '-- ============================',
 'function GachaSystem.rollStarCount(N, M)',
-'    local t = LUCK / 4000  -- 행운력 조절값 (LUCK=1000이면 t=0.25)',
+'    -- [중복 보정 한정 캡] L > 4000% 는 4000% 로 간주 (t 상한 1.0)',
+'    -- t>1 의 overflow(룰렛 NaN) + 작은풀(N>M) 역효과를 함께 차단',
+'    local t = math.clamp(LUCK / 4000, 0, 1)',
 '',
-'    -- base: 창 많고 존 낮을수록 커짐 -> 고별 유리',
-'    local base = math.min(1, (N / M) ^ (0.5 * (1 - t)))  -- 1로 캡: N>=M이면 균등 분포',
+'    -- base: 창 많고 존 낮을수록 커짐 -> 고별 유리 (min 캡 없음, t<=1 라 역효과 없음)',
+'    local base = (N / M) ^ (0.5 * (1 - t))',
 '',
 '    -- 각 별 갯수(2~N)의 가중치 계산',
 '    local weights = {}',
@@ -738,12 +773,16 @@ function exportGachaSystem() {
 '',
 '-- ============================',
 '-- 함수 3: 브레인롯 뽑기 - 등급 선택',
-'-- k: 존의 최고 등급+1 (예: Secret존=7, OG존=8)',
-'-- tl: 행운력 총합 (LUCK + 존 보너스)',
-'-- 반환값: 등급 인덱스 (0=Common ~ 7=OG)',
+'-- k: 존의 최고 등급+1 (예: Secret존=7)',
+'-- tl: 유효 행운력 (LUCK + Secret+ 깊이 보너스 10%×깊이)',
+'-- 반환값: 등급 인덱스 (0=Common ~ 6=Secret)',
 '-- ============================',
 'function GachaSystem.rollGrade(k, tl)',
 '    local t = math.min(tl / 1000, 1)',
+'',
+'    -- L>1000% 구간 강화: effective_n_exp = N_EXP + extraExp',
+'    local extraExp = math.clamp((tl - 1000) / 1000, 0, 100)',
+'    local eff = N_EXP + extraExp',
 '',
 '    -- 기본분포: 하위 등급일수록 자주 등장',
 '    local base_w = {}',
@@ -753,11 +792,11 @@ function exportGachaSystem() {
 '        base_sum = base_sum + base_w[gi]',
 '    end',
 '',
-'    -- 행운분포: 상위 등급일수록 자주 등장',
+'    -- 행운분포: 상위 등급일수록 자주 등장 (eff 클수록 최상위 집중)',
 '    local luck_w = {}',
 '    local luck_sum = 0',
 '    for gi = 0, k-1 do',
-'        luck_w[gi] = (gi + 1) ^ N_EXP',
+'        luck_w[gi] = (gi + 1) ^ eff',
 '        luck_sum = luck_sum + luck_w[gi]',
 '    end',
 '',
@@ -780,9 +819,9 @@ function exportGachaSystem() {
 '',
 '-- ============================',
 '-- 함수 4: 브레인롯 뽑기 - 등급 내 개체 선택',
-'-- grade: 등급 인덱스 (0=Common ~ 7=OG)',
+'-- grade: 등급 인덱스 (0=Common ~ 6=Secret)',
 '-- excludeList: 이미 뽑힌 브레인롯 ID 목록 (별로직 3단계 중복 방지용)',
-'--              예) { ["Dragon Cannelloni"]=true, ["Meowl"]=true }',
+'--              예) { ["Dragon Cannelloni"]=true }',
 '-- 반환값: 브레인롯 ID',
 '-- ============================',
 'function GachaSystem.rollBrainrot(grade, excludeList)',
@@ -826,7 +865,7 @@ function exportGachaSystem() {
   a.click();
 }
 
-currentZone=6;
+currentZone=7;   // 기본 = Secret존 (ZONES 인덱스 7)
 loadFromServer();
 </script>
 </body>
