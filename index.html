@@ -147,6 +147,11 @@ input[type=range]::-moz-range-thumb {
     <input type="range" min="1" max="10" value="5" step="1" id="spear-sl">
     <span class="ctrl-val" id="spear-v">5개</span>
   </div>
+  <div class="ctrl-row" style="border-top:1px solid #f0efe9;padding-top:12px;margin-top:4px">
+    <span class="ctrl-label">첫 브레인롯 수익<small>공비 1.2 · 등급간 ×3</small></span>
+    <input type="number" id="base-inc" value="100" min="0.01" step="1" style="flex:1;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;color:#1a1a1a;text-align:right;outline:none">
+    <span style="font-size:11px;color:#888;min-width:18px">/s</span>
+  </div>
 </div>
 
 <div class="card">
@@ -354,78 +359,118 @@ const ZONES = [
   {n:'B.God존',    k:6}, {n:'Secret존',    k:7},
 ];
 
-const BR = {
+// 브레인롯 이름과 rank만 보관 (수익은 첫 브레인롯 수익 기준 자동 계산)
+// 배열 순서 = 수익 내림차순 (배열 0번째 = 등급 내 가장 높은 수익)
+const BR_NAMES = {
   'Common':[
-    {n:'Pipi Kiwi',inc:13,r:0},{n:'Svinina Bombardino',inc:10,r:1},
-    {n:'Talpa Di Fero',inc:9,r:2},{n:'Fluri Flura',inc:7,r:3},
-    {n:'Tim Cheese',inc:5,r:4},{n:'Lirili Larila',inc:3,r:5},
+    {n:'Pipi Kiwi',r:0},{n:'Svinina Bombardino',r:1},
+    {n:'Talpa Di Fero',r:2},{n:'Fluri Flura',r:3},
+    {n:'Tim Cheese',r:4},{n:'Lirili Larila',r:5},
   ],
   'Rare':[
-    {n:'Tric Trac Barabum',inc:65,r:0},{n:'Ta Ta Ta Ta Sahur',inc:55,r:1},
-    {n:'Banana Dancana',inc:50,r:2},{n:'Cacto Hipopotamo',inc:50,r:2},
-    {n:'Boneca Ambalabu',inc:40,r:3},{n:'Bobrito Bandito',inc:35,r:4},
-    {n:'Gangster Footera',inc:30,r:5},{n:'Tung Sahur',inc:25,r:6},
-    {n:'Trippi Troppi',inc:15,r:7},
+    {n:'Tric Trac Barabum',r:0},{n:'Ta Ta Ta Ta Sahur',r:1},
+    {n:'Banana Dancana',r:2},{n:'Cacto Hipopotamo',r:2},
+    {n:'Boneca Ambalabu',r:3},{n:'Bobrito Bandito',r:4},
+    {n:'Gangster Footera',r:5},{n:'Tung Sahur',r:6},
+    {n:'Trippi Troppi',r:7},
   ],
   'Epic':[
-    {n:'Avocadini Guffo',inc:225,r:0},{n:'Brri Brri Bicus Dicus',inc:175,r:1},
-    {n:'Bananita Dolphinita',inc:150,r:2},{n:'Bambini Crostini',inc:135,r:3},
-    {n:'Trulimero Trulicina',inc:125,r:4},{n:'Brr Brr Patapim',inc:100,r:5},
-    {n:'Bananini Kittini',inc:100,r:5},{n:'Cappuccino Assassino',inc:75,r:6},
+    {n:'Avocadini Guffo',r:0},{n:'Brri Brri Bicus Dicus',r:1},
+    {n:'Bananita Dolphinita',r:2},{n:'Bambini Crostini',r:3},
+    {n:'Trulimero Trulicina',r:4},{n:'Brr Brr Patapim',r:5},
+    {n:'Bananini Kittini',r:5},{n:'Cappuccino Assassino',r:6},
   ],
   'Legendary':[
-    {n:'Pandaccini Bananini',inc:1200,r:0},{n:'Pipi Potato',inc:1100,r:1},
-    {n:'Strawberrelli Flamingelli',inc:1100,r:1},{n:'Blueberrinni Octopusini',inc:1000,r:2},
-    {n:'Glorbo Fruttodrillo',inc:750,r:3},{n:'Nyannini Cattalini',inc:700,r:4},
-    {n:'Lionel Cactuseli',inc:650,r:5},{n:'Smurfo Gatto',inc:600,r:6},
-    {n:'Chef Crabracadabra',inc:600,r:6},{n:'Illuminato Triangolo',inc:500,r:7},
-    {n:'Ballerina Cappuccina',inc:500,r:7},{n:'Tirilikalika Tirilikalako',inc:450,r:8},
-    {n:'Teddino Rosino',inc:450,r:8},{n:'Chimpanzini Bananini',inc:300,r:9},
-    {n:'Burbaloni Luliloli',inc:250,r:10},
+    {n:'Pandaccini Bananini',r:0},{n:'Pipi Potato',r:1},
+    {n:'Strawberrelli Flamingelli',r:1},{n:'Blueberrinni Octopusini',r:2},
+    {n:'Glorbo Fruttodrillo',r:3},{n:'Nyannini Cattalini',r:4},
+    {n:'Lionel Cactuseli',r:5},{n:'Smurfo Gatto',r:6},
+    {n:'Chef Crabracadabra',r:6},{n:'Illuminato Triangolo',r:7},
+    {n:'Ballerina Cappuccina',r:7},{n:'Tirilikalika Tirilikalako',r:8},
+    {n:'Teddino Rosino',r:8},{n:'Chimpanzini Bananini',r:9},
+    {n:'Burbaloni Luliloli',r:10},
   ],
   'Mythic':[
-    {n:'Cachorrito Melonito',inc:13000,r:0},{n:'Ganganzelli Trulala',inc:9000,r:1},
-    {n:'Lerulerulerule',inc:8750,r:2},{n:'Gorillo Watermelondrillo',inc:8000,r:3},
-    {n:'Cavallo Virtuoso',inc:7500,r:4},{n:'Zibra Zubra Zibralini',inc:6000,r:5},
-    {n:'Bombombini Gusini',inc:5000,r:6},{n:'Bombardiro Crocodilo',inc:2500,r:7},
-    {n:'Rhino Toasterino',inc:2100,r:8},{n:'Orangutini Ananassini',inc:1700,r:9},
-    {n:'Frigo Camelo',inc:1500,r:10},
+    {n:'Cachorrito Melonito',r:0},{n:'Ganganzelli Trulala',r:1},
+    {n:'Lerulerulerule',r:2},{n:'Gorillo Watermelondrillo',r:3},
+    {n:'Cavallo Virtuoso',r:4},{n:'Zibra Zubra Zibralini',r:5},
+    {n:'Bombombini Gusini',r:6},{n:'Bombardiro Crocodilo',r:7},
+    {n:'Rhino Toasterino',r:8},{n:'Orangutini Ananassini',r:9},
+    {n:'Frigo Camelo',r:10},
   ],
   'Brainrot God':[
-    {n:'Pakrahmatmatina',inc:225000,r:0},{n:'Pakrahmatmamat',inc:215000,r:1},
-    {n:'Pakrahmatmatina Valentina',inc:215000,r:1},{n:'Ballerino Lololo',inc:200000,r:2},
-    {n:'Trippi Troppi Troppa Trippa',inc:175000,r:3},{n:'Tralalita Tralala',inc:100000,r:4},
-    {n:'Orcalero Orcala',inc:100000,r:4},{n:'Odin Din Din Dun',inc:75000,r:5},
-    {n:'Espresso Signora',inc:70000,r:6},{n:'Tigroligre Frutonni',inc:60000,r:7},
-    {n:'Madudung',inc:50000,r:8},{n:'Matteo',inc:50000,r:8},
-    {n:'Tralalero Tralala',inc:50000,r:8},{n:'Girafa Celeste',inc:20000,r:9},
-    {n:'Cocofanto Elefanto',inc:17500,r:10},
+    {n:'Pakrahmatmatina',r:0},{n:'Pakrahmatmamat',r:1},
+    {n:'Pakrahmatmatina Valentina',r:1},{n:'Ballerino Lololo',r:2},
+    {n:'Trippi Troppi Troppa Trippa',r:3},{n:'Tralalita Tralala',r:4},
+    {n:'Orcalero Orcala',r:4},{n:'Odin Din Din Dun',r:5},
+    {n:'Espresso Signora',r:6},{n:'Tigroligre Frutonni',r:7},
+    {n:'Madudung',r:8},{n:'Matteo',r:8},
+    {n:'Tralalero Tralala',r:8},{n:'Girafa Celeste',r:9},
+    {n:'Cocofanto Elefanto',r:10},
   ],
   'Secret':[
-    {n:'Dragon Cannelloni',inc:2500000,r:0},{n:'Garamararam',inc:2350000,r:1},
-    {n:'Esok Sekolah',inc:2200000,r:2},{n:'Tralaledon',inc:2100000,r:3},
-    {n:'Chicleteira Cupideira',inc:1900000,r:4},{n:'Swag Soda',inc:1800000,r:5},
-    {n:'Noo My Heart',inc:1700000,r:6},{n:'La Grande Combinasion',inc:1550000,r:7},
-    {n:'Six Seven',inc:1350000,r:8},{n:'Chillin Chili',inc:1150000,r:9},
-    {n:'Chicleteirina Bicicleteirina',inc:1050000,r:10},{n:'Chicleteira Bicicleteira',inc:950000,r:11},
-    {n:'Quesadilla Crocodila',inc:850000,r:12},{n:'Pot Hotspot',inc:750000,r:13},
-    {n:'Noo My Examen',inc:660000,r:14},{n:'1x1x1x1',inc:600000,r:15},
-    {n:'Love Love Love Sahur',inc:530000,r:16},{n:'Los Tralaleritos',inc:475000,r:17},
-    {n:'Triplito Tralaleritos',inc:475000,r:17},{n:'Job Job Job Sahur',inc:430000,r:18},
-    {n:'Yess My Examen',inc:390000,r:19},{n:'Agarrini La Pallini',inc:350000,r:20},
-    {n:'Torrtuginni Dragonfrutini',inc:325000,r:21},{n:'Karkerkar Kurkur',inc:300000,r:22},
-    {n:'La Vacca Saturno Saturnita',inc:300000,r:22},
+    {n:'Dragon Cannelloni',r:0},{n:'Garamararam',r:1},
+    {n:'Esok Sekolah',r:2},{n:'Tralaledon',r:3},
+    {n:'Chicleteira Cupideira',r:4},{n:'Swag Soda',r:5},
+    {n:'Noo My Heart',r:6},{n:'La Grande Combinasion',r:7},
+    {n:'Six Seven',r:8},{n:'Chillin Chili',r:9},
+    {n:'Chicleteirina Bicicleteirina',r:10},{n:'Chicleteira Bicicleteira',r:11},
+    {n:'Quesadilla Crocodila',r:12},{n:'Pot Hotspot',r:13},
+    {n:'Noo My Examen',r:14},{n:'1x1x1x1',r:15},
+    {n:'Love Love Love Sahur',r:16},{n:'Los Tralaleritos',r:17},
+    {n:'Triplito Tralaleritos',r:17},{n:'Job Job Job Sahur',r:18},
+    {n:'Yess My Examen',r:19},{n:'Agarrini La Pallini',r:20},
+    {n:'Torrtuginni Dragonfrutini',r:21},{n:'Karkerkar Kurkur',r:22},
+    {n:'La Vacca Saturno Saturnita',r:22},
   ],
 };
+
+// 수익 자동 계산 규칙:
+//   - 첫 브레인롯 수익 = baseInc (Common 가장 낮은 값)
+//   - 등급 내: 다음 개체로 갈수록 ×1.2 증가 (배열 마지막 → 첫번째 방향으로 ×1.2)
+//   - 등급간 점프: 직전 등급 가장 높은 값 × 3 = 다음 등급 가장 낮은 값
+//   - 배열 순서: 수익 내림차순 (배열 0번째 = 등급 내 가장 높은 수익)
+const BR_RATIO = 1.2;
+const BR_JUMP  = 3;
+
+function buildBR(baseInc) {
+  const result = {};
+  let startVal = baseInc;  // 현재 등급의 시작값 (가장 낮은 = 배열 마지막)
+
+  for (const grade of GRADE_NAMES) {
+    const names = BR_NAMES[grade];
+    const count = names.length;
+    const items = [];
+    // 배열 인덱스 i (i=0이 가장 높은 수익)
+    //   배열[count-1] = startVal (가장 낮음)
+    //   배열[0]       = startVal × 1.2^(count-1) (가장 높음)
+    for (let i = 0; i < count; i++) {
+      const inc = startVal * Math.pow(BR_RATIO, count - 1 - i);
+      items.push({ n: names[i].n, inc: inc, r: names[i].r });
+    }
+    result[grade] = items;
+
+    // 다음 등급 시작값 = 현재 등급 가장 높은 값 × 3
+    const highest = startVal * Math.pow(BR_RATIO, count - 1);
+    startVal = highest * BR_JUMP;
+  }
+  return result;
+}
+
+let BR = buildBR(100);  // 기본값 100원
 
 let r1=0.5, r2=0.5, luck=0, n_exp=1.0, spearCount=5, secretPlus=0, currentZone=null;
 let effLuck=0;  // 유효 행운력 = luck + (Secret존이면 secretPlus)
 const openGrades = new Set();
 
 function fmtInc(v) {
-  if (v>=1000000) return (v/1000000).toFixed(1)+'M';
-  if (v>=1000) return Math.round(v/1000)+'K';
-  return v;
+  if (v>=1e15) return (v/1e15).toFixed(2)+'Q';   // 천조
+  if (v>=1e12) return (v/1e12).toFixed(2)+'T';   // 조
+  if (v>=1e9)  return (v/1e9).toFixed(2)+'B';    // 십억
+  if (v>=1e6)  return (v/1e6).toFixed(2)+'M';    // 백만
+  if (v>=1e3)  return (v/1e3).toFixed(1)+'K';
+  if (v>=10)   return v.toFixed(1);
+  return v.toFixed(2);
 }
 
 function calcPerm(M, N) {
@@ -655,6 +700,12 @@ document.getElementById('luck-sl').oninput=e=>{luck=+e.target.value;document.get
 document.getElementById('n-sl').oninput=e=>{n_exp=e.target.value/10;document.getElementById('n-v').textContent=n_exp.toFixed(1);render();};
 document.getElementById('spear-sl').oninput=e=>{spearCount=+e.target.value;document.getElementById('spear-v').textContent=spearCount+'개';render();};
 document.getElementById('splus-sl').oninput=e=>{secretPlus=+e.target.value;document.getElementById('splus-v').textContent='+'+secretPlus+'%';render();};
+document.getElementById('base-inc').oninput=e=>{
+  const v = parseFloat(e.target.value);
+  if (!isFinite(v) || v <= 0) return;  // 잘못된 입력 무시
+  BR = buildBR(v);
+  render();
+};
 
 
 const API_URL = 'https://zbrsowxhjl.execute-api.us-east-1.amazonaws.com/config';
