@@ -129,8 +129,8 @@ input[type=range]::-moz-range-thumb {
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">감쇠계수 r2<small>개체 선택</small></span>
-    <input type="range" min="0" max="100" value="50" step="5" id="r2-sl">
-    <span class="ctrl-val" id="r2-v">0.50</span>
+    <input type="range" min="0" max="500" value="334" step="1" id="r2-sl">
+    <span class="ctrl-val" id="r2-v">3.34</span>
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">행운력 L%</span>
@@ -240,10 +240,21 @@ input[type=range]::-moz-range-thumb {
       <div class="formula-block">
         <div class="f-title">브레인롯 뽑기 — 등급 내 개체 선택 확률</div>
         <div class="f-line">
-          <span class="f-expr">가중치(j) = 1 + r2 × rank[j]</span>
+          <span class="f-expr">가중치(j) = 1 + r2_eff × rank[j]</span>
         </div>
         <div class="f-line">
           <span class="f-expr">개체확률(j) = 가중치(j) / 전체 가중치 합</span>
+        </div>
+        <div class="f-divider"></div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">r2_eff 계산</span></span>
+          <span class="f-comment">P_top 이 L 에 선형 증가하도록 역산</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr">P_target = P0 + (P_MAX − P0) × t</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr">r2_eff = (1/P_target − N) / S</span>
         </div>
         <div class="f-divider"></div>
         <div class="f-line">
@@ -251,8 +262,28 @@ input[type=range]::-moz-range-thumb {
           <span class="f-comment">수익 내림차순 순위 (0=최고수익, 동수는 같은 rank)</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">r2</span> = <span class="f-val" id="disp-r2">0.50</span></span>
+          <span class="f-expr"><span class="f-var">N, S</span></span>
+          <span class="f-comment">N = 등급 마리 수, S = rank 합 (등급마다 다름)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">P0</span> = 1 / (N + S × r2)</span>
+          <span class="f-comment">L=0%일 때 최고수익 마리 확률 (r2 클수록 작아짐)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">P_MAX</span> = <span class="f-val">3.00%</span></span>
+          <span class="f-comment">L=4000%일 때 최고수익 마리 확률 (목표값)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">r2</span> = <span class="f-val" id="disp-r2">3.34</span></span>
           <span class="f-comment">감쇠계수 (개체용) — 클수록 저수익 개체가 더 자주 등장</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">t</span> = clamp(L/4000, 0, 1) = <span class="f-val" id="disp-r2t">0.0000</span></span>
+          <span class="f-comment">행운력 평탄화 비율 (L=0%→0, L=4000%→1.0)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr"><span class="f-var">r2_eff</span> = <span class="f-val" id="disp-r2eff">3.34</span></span>
+          <span class="f-comment">현재 등급(Secret) 기준 유효 r2 — 행운력 높을수록 작아져 매 구간 균등 증가</span>
         </div>
       </div>
 
@@ -459,7 +490,7 @@ function buildBR(baseInc) {
 
 let BR = buildBR(100);  // 기본값 100원
 
-let r1=0.5, r2=0.5, luck=0, n_exp=1.0, spearCount=5, secretPlus=0, currentZone=null;
+let r1=0.5, r2=3.34, luck=0, n_exp=1.0, spearCount=5, secretPlus=0, currentZone=null;
 let effLuck=0;  // 유효 행운력 = luck + (Secret존이면 secretPlus)
 const openGrades = new Set();
 
@@ -585,9 +616,37 @@ function calcGradeProbs(k, tl) {
   return Array.from({length:k}, (_,gi) => ((1-t)*pb[gi] + t*pl[gi]) * 100);
 }
 
-function calcBrProbs(grade) {
+// [신규] 행운력에 따라 r2_eff 계산 — P_top이 L에 선형 증가하도록 역산
+//   목표: L=0% → P(top) = 1/(N + S×r2)  (현재 r2 적용)
+//         L=4000% → P(top) ≈ P_MAX_TOP (균등 증가)
+//   r2_eff = (1/P_target − N) / S
+//
+//   t = clamp(L/4000, 0, 1)
+//   P_target = P0 + (P_MAX_TOP − P0) × t
+//
+//   효과: 매 L 구간마다 P(top)이 균등 증가 (마지막 폭증 방지)
+const P_MAX_TOP = 0.03;  // L=4000%일 때 최고수익 마리 확률 ≈ 3%
+
+function calcR2Eff(L, grade) {
+  const t = Math.min(Math.max((L || 0) / 4000, 0), 1);
   const list = BR[grade];
-  const w = list.map(b=>1+r2*b.r);
+  const N = list.length;
+  const S = list.reduce((sum, b) => sum + b.r, 0);
+
+  if (S === 0) return r2;  // 모두 rank=0이면 의미 없음
+
+  const P0 = 1 / (N + S * r2);            // L=0% P(top)
+  const P_target = P0 + (P_MAX_TOP - P0) * t;
+  if (P_target <= 0) return r2;            // 안전망
+
+  const r2_eff = (1 / P_target - N) / S;
+  return Math.max(0, r2_eff);              // 음수 방지
+}
+
+function calcBrProbs(grade, L) {
+  const list = BR[grade];
+  const r2e = calcR2Eff(L, grade);
+  const w = list.map(b=>1+r2e*b.r);
   const s = w.reduce((a,b)=>a+b,0);
   return w.map(x=>x/s*100);
 }
@@ -595,7 +654,7 @@ function calcBrProbs(grade) {
 function buildBrPanel(gi, color) {
   const grade = GRADE_NAMES[gi];
   const list = BR[grade];
-  const probs = calcBrProbs(grade);
+  const probs = calcBrProbs(grade, effLuck);
   const maxP = Math.max(...probs);
   const panel = document.createElement('div');
   panel.className = 'br-panel'+(openGrades.has(gi)?' open':'');
@@ -636,6 +695,10 @@ function updateDispValues() {
   const extraExp = Math.min(Math.max((effLuck - 1000) / 1000, 0), 100);
   document.getElementById('disp-extra').textContent = extraExp.toFixed(2);
   document.getElementById('disp-eff').textContent   = (n_exp + extraExp).toFixed(1);
+  // [신규] r2 평탄화 — Secret 등급 기준으로 표시
+  const r2t = Math.min(Math.max(effLuck/4000, 0), 1);
+  document.getElementById('disp-r2t').textContent   = r2t.toFixed(4);
+  document.getElementById('disp-r2eff').textContent = calcR2Eff(effLuck, 'Secret').toFixed(4);
 }
 
 function render() {
@@ -894,11 +957,22 @@ function exportGachaSystem() {
 '-- ============================',
 '-- 함수 4: 브레인롯 뽑기 - 등급 내 개체 선택',
 '-- grade: 등급 인덱스 (0=Common ~ 6=Secret)',
+'-- L: 행운력 (Secret+ 보너스 포함) — 행운력 높을수록 최고수익 마리가 더 자주 등장',
 '-- excludeList: 이미 뽑힌 브레인롯 ID 목록 (별로직 3단계 중복 방지용)',
 '--              예) { ["Dragon Cannelloni"]=true }',
 '-- 반환값: 브레인롯 ID',
 '-- ============================',
-'function GachaSystem.rollBrainrot(grade, excludeList)',
+'-- [신규] r2_eff 계산 — P_top이 L에 선형 증가하도록 역산',
+'--   t = clamp(L/4000, 0, 1)',
+'--   N = 등급 마리 수, S = rank 합',
+'--   P0 = 1/(N + S×r2)   (L=0% P(top))',
+'--   P_MAX_TOP ≈ 0.03    (L=4000% P(top) ≈ 3%)',
+'--   P_target = P0 + (P_MAX_TOP − P0) × t',
+'--   r2_eff = (1/P_target − N) / S',
+'-- 효과: 매 L 구간마다 P(top) 균등 증가 (마지막 폭증 방지)',
+'local P_MAX_TOP = 0.03  -- L=4000% 일 때 최고수익 마리 확률 (≈3%)',
+'',
+'function GachaSystem.rollBrainrot(grade, L, excludeList)',
 '    -- getBrainrotList(grade): 개발자가 직접 연결',
 '    -- 반환 형태: { {id="Dragon Cannelloni", rank=0}, {id="Garamararam", rank=1}, ... }',
 '    local list = getBrainrotList(grade)',
@@ -911,11 +985,35 @@ function exportGachaSystem() {
 '        end',
 '    end',
 '',
+'    -- N (마리 수), S (rank 합) 계산',
+'    local N = #candidates',
+'    local S = 0',
+'    for _, b in ipairs(candidates) do',
+'        S = S + b.rank',
+'    end',
+'',
+'    -- r2_eff 계산 (P_top 역산)',
+'    local r2_eff',
+'    if S == 0 or N == 0 then',
+'        r2_eff = r2  -- rank 모두 0이거나 후보 비면 무의미',
+'    else',
+'        local t = math.clamp((L or 0) / 4000, 0, 1)',
+'        local P0 = 1 / (N + S * r2)',
+'        local P_target = P0 + (P_MAX_TOP - P0) * t',
+'        if P_target <= 0 then',
+'            r2_eff = r2',
+'        else',
+'            r2_eff = (1 / P_target - N) / S',
+'            if r2_eff < 0 then r2_eff = 0 end',
+'        end',
+'    end',
+'',
 '    -- 가중치: rank 높을수록(저수익일수록) 더 자주 등장',
+'    -- (L 증가 → r2_eff 감소 → 최고수익 마리 확률 점진 증가)',
 '    local weights = {}',
 '    local total = 0',
 '    for _, b in ipairs(candidates) do',
-'        local w = 1 + r2 * b.rank',
+'        local w = 1 + r2_eff * b.rank',
 '        table.insert(weights, { id=b.id, w=w })',
 '        total = total + w',
 '    end',
