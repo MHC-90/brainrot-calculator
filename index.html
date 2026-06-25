@@ -129,8 +129,8 @@ input[type=range]::-moz-range-thumb {
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">감쇠계수 r2<small>개체 선택</small></span>
-    <input type="range" min="0" max="500" value="334" step="1" id="r2-sl">
-    <span class="ctrl-val" id="r2-v">3.34</span>
+    <input type="range" min="0" max="200" value="60" step="1" id="r2-sl">
+    <span class="ctrl-val" id="r2-v">0.60</span>
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">행운력 L%</span>
@@ -144,8 +144,8 @@ input[type=range]::-moz-range-thumb {
   </div>
   <div class="ctrl-row">
     <span class="ctrl-label">창 갯수 N<small>별로직 4단계</small></span>
-    <input type="range" min="1" max="10" value="5" step="1" id="spear-sl">
-    <span class="ctrl-val" id="spear-v">5개</span>
+    <input type="range" min="1" max="18" value="10" step="1" id="spear-sl">
+    <span class="ctrl-val" id="spear-v">10개</span>
   </div>
   <div class="ctrl-row" style="border-top:1px solid #f0efe9;padding-top:12px;margin-top:4px">
     <span class="ctrl-label">첫 브레인롯 수익<small>공비 1.2 · 등급간 ×3</small></span>
@@ -240,21 +240,19 @@ input[type=range]::-moz-range-thumb {
       <div class="formula-block">
         <div class="f-title">브레인롯 뽑기 — 등급 내 개체 선택 확률</div>
         <div class="f-line">
-          <span class="f-expr">가중치(j) = 1 + r2_eff × rank[j]</span>
+          <span class="f-expr">가중치(j) = 1 + r2_eff × rank[j]<span style="color:#aaa;font-weight:400">  (일반 등급)</span></span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr">가중치(j) = 1 + r2_eff × rank[j]^1.5<span style="color:#E24B4A;font-weight:400">  (Secret 등급 — 더 가파른 분포)</span></span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr">r2_eff = r2 × (1 − 0.97×t)</span>
+        </div>
+        <div class="f-line">
+          <span class="f-expr">t = (clamp(L/4000, 0, 1))^0.25</span>
         </div>
         <div class="f-line">
           <span class="f-expr">개체확률(j) = 가중치(j) / 전체 가중치 합</span>
-        </div>
-        <div class="f-divider"></div>
-        <div class="f-line">
-          <span class="f-expr"><span class="f-var">r2_eff 계산</span></span>
-          <span class="f-comment">P_top 이 L 에 선형 증가하도록 역산</span>
-        </div>
-        <div class="f-line">
-          <span class="f-expr">P_target = P0 + (P_MAX − P0) × t</span>
-        </div>
-        <div class="f-line">
-          <span class="f-expr">r2_eff = (1/P_target − N) / S</span>
         </div>
         <div class="f-divider"></div>
         <div class="f-line">
@@ -262,28 +260,20 @@ input[type=range]::-moz-range-thumb {
           <span class="f-comment">수익 내림차순 순위 (0=최고수익, 동수는 같은 rank)</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">N, S</span></span>
-          <span class="f-comment">N = 등급 마리 수, S = rank 합 (등급마다 다름)</span>
+          <span class="f-expr"><span class="f-var">rank^1.5 (Secret)</span></span>
+          <span class="f-comment">Secret만 rank를 1.5승 → 다른 등급보다 가파른 분포 (전설 마리 귀함) + 행운 효과 잘 보임</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">P0</span> = 1 / (N + S × r2)</span>
-          <span class="f-comment">L=0%일 때 최고수익 마리 확률 (r2 클수록 작아짐)</span>
-        </div>
-        <div class="f-line">
-          <span class="f-expr"><span class="f-var">P_MAX</span> = <span class="f-val">3.00%</span></span>
-          <span class="f-comment">L=4000%일 때 최고수익 마리 확률 (목표값)</span>
-        </div>
-        <div class="f-line">
-          <span class="f-expr"><span class="f-var">r2</span> = <span class="f-val" id="disp-r2">3.34</span></span>
+          <span class="f-expr"><span class="f-var">r2</span> = <span class="f-val" id="disp-r2">0.60</span></span>
           <span class="f-comment">감쇠계수 (개체용) — 클수록 저수익 개체가 더 자주 등장</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">t</span> = clamp(L/4000, 0, 1) = <span class="f-val" id="disp-r2t">0.0000</span></span>
-          <span class="f-comment">행운력 평탄화 비율 (L=0%→0, L=4000%→1.0)</span>
+          <span class="f-expr"><span class="f-var">t</span> = <span class="f-val" id="disp-r2t">0.0000</span></span>
+          <span class="f-comment">네제곱근 곡선 — 초반/중반부터 행운력 효과 강하게 체감 (효율 1.6~1.8배 ↑)</span>
         </div>
         <div class="f-line">
-          <span class="f-expr"><span class="f-var">r2_eff</span> = <span class="f-val" id="disp-r2eff">3.34</span></span>
-          <span class="f-comment">현재 등급(Secret) 기준 유효 r2 — 행운력 높을수록 작아져 매 구간 균등 증가</span>
+          <span class="f-expr"><span class="f-var">r2_eff</span> = <span class="f-val" id="disp-r2eff">0.60</span></span>
+          <span class="f-comment">유효 r2 — L=0%면 r2, L=4000%면 r2×0.03 (3%까지 감쇠)</span>
         </div>
       </div>
 
@@ -440,19 +430,20 @@ const BR_NAMES = {
     {n:'Cocofanto Elefanto',r:10},
   ],
   'Secret':[
-    {n:'Dragon Cannelloni',r:0},{n:'Garamararam',r:1},
-    {n:'Esok Sekolah',r:2},{n:'Tralaledon',r:3},
-    {n:'Chicleteira Cupideira',r:4},{n:'Swag Soda',r:5},
-    {n:'Noo My Heart',r:6},{n:'La Grande Combinasion',r:7},
-    {n:'Six Seven',r:8},{n:'Chillin Chili',r:9},
-    {n:'Chicleteirina Bicicleteirina',r:10},{n:'Chicleteira Bicicleteira',r:11},
-    {n:'Quesadilla Crocodila',r:12},{n:'Pot Hotspot',r:13},
-    {n:'Noo My Examen',r:14},{n:'1x1x1x1',r:15},
-    {n:'Love Love Love Sahur',r:16},{n:'Los Tralaleritos',r:17},
-    {n:'Triplito Tralaleritos',r:17},{n:'Job Job Job Sahur',r:18},
-    {n:'Yess My Examen',r:19},{n:'Agarrini La Pallini',r:20},
-    {n:'Torrtuginni Dragonfrutini',r:21},{n:'Karkerkar Kurkur',r:22},
-    {n:'La Vacca Saturno Saturnita',r:22},
+    {n:'Strawberry Elephant',r:0},{n:'Meowl',r:1},
+    {n:'Dragon Cannelloni',r:2},{n:'Garamararam',r:3},
+    {n:'Esok Sekolah',r:4},{n:'Tralaledon',r:5},
+    {n:'Chicleteira Cupideira',r:6},{n:'Swag Soda',r:7},
+    {n:'Noo My Heart',r:8},{n:'La Grande Combinasion',r:9},
+    {n:'Six Seven',r:10},{n:'Chillin Chili',r:11},
+    {n:'Chicleteirina Bicicleteirina',r:12},{n:'Chicleteira Bicicleteira',r:13},
+    {n:'Quesadilla Crocodila',r:14},{n:'Pot Hotspot',r:15},
+    {n:'Noo My Examen',r:16},{n:'1x1x1x1',r:17},
+    {n:'Love Love Love Sahur',r:18},{n:'Los Tralaleritos',r:19},
+    {n:'Triplito Tralaleritos',r:19},{n:'Job Job Job Sahur',r:20},
+    {n:'Yess My Examen',r:21},{n:'Agarrini La Pallini',r:22},
+    {n:'Torrtuginni Dragonfrutini',r:23},{n:'Karkerkar Kurkur',r:24},
+    {n:'La Vacca Saturno Saturnita',r:24},
   ],
 };
 
@@ -490,7 +481,7 @@ function buildBR(baseInc) {
 
 let BR = buildBR(100);  // 기본값 100원
 
-let r1=0.5, r2=3.34, luck=0, n_exp=1.0, spearCount=5, secretPlus=0, currentZone=null;
+let r1=0.5, r2=0.6, luck=0, n_exp=1.0, spearCount=10, secretPlus=0, currentZone=null;
 let effLuck=0;  // 유효 행운력 = luck + (Secret존이면 secretPlus)
 const openGrades = new Set();
 
@@ -574,20 +565,28 @@ function renderStarDist(N, M) {
   const dist = calcStarDist(N, M, effLuck, n_exp);
   const maxP = Math.max(...dist);
 
-  const STAR_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5','#E24B4A','#639922'];
+  const STAR_COLORS = ['#888780','#1D9E75','#7F77DD','#D85A30','#D4537E','#BA7517','#185FA5','#E24B4A','#639922','#4A90A4','#B0419E','#A87C00','#5D5DCC','#C13B6B','#3B9F6E','#D67E1B','#7B4FA8','#2E7BB8'];
+  // N≥11이면 row 컴팩트 모드 (행 높이/패딩 축소)
+  const compact = N >= 11;
+  const rowMargin = compact ? '2px 0' : '3px 0';
+  const rowPadding = compact ? '3px 6px' : '5px 7px';
+  const labelFont = compact ? '11px' : '12px';
+  const barHeight = compact ? '13px' : '16px';
+  const pctFont = compact ? '10px' : '11px';
+
   dist.forEach((p, i) => {
     const k = i + 2;
     const bw = maxP > 0 ? p/maxP*100 : 0;
     const color = STAR_COLORS[i % STAR_COLORS.length];
     const pStr = p >= 0.0001 ? p.toFixed(4)+'%' : '<0.0001%';
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:3px 0;padding:5px 7px;border-radius:6px;background:#f5f4f0;';
+    row.style.cssText = `display:flex;align-items:center;gap:8px;margin:${rowMargin};padding:${rowPadding};border-radius:6px;background:#f5f4f0;`;
     row.innerHTML =
-      '<span style="font-size:12px;font-weight:700;color:#1a1a1a;min-width:24px">★'+k+'</span>'+
-      '<div style="flex:1;height:16px;background:#e8e7e3;border-radius:3px;overflow:hidden">'+
+      '<span style="font-size:'+labelFont+';font-weight:700;color:#1a1a1a;min-width:30px">★'+k+'</span>'+
+      '<div style="flex:1;height:'+barHeight+';background:#e8e7e3;border-radius:3px;overflow:hidden">'+
         '<div style="height:100%;border-radius:3px;transition:width .25s ease;width:'+bw.toFixed(2)+'%;background:'+color+'"></div>'+
       '</div>'+
-      '<span style="font-size:11px;font-weight:600;color:#555;min-width:76px;text-align:right;font-family:\'SF Mono\',monospace">'+pStr+'</span>';
+      '<span style="font-size:'+pctFont+';font-weight:600;color:#555;min-width:76px;text-align:right;font-family:\'SF Mono\',monospace">'+pStr+'</span>';
     container.appendChild(row);
   });
 }
@@ -616,37 +615,29 @@ function calcGradeProbs(k, tl) {
   return Array.from({length:k}, (_,gi) => ((1-t)*pb[gi] + t*pl[gi]) * 100);
 }
 
-// [신규] 행운력에 따라 r2_eff 계산 — P_top이 L에 선형 증가하도록 역산
-//   목표: L=0% → P(top) = 1/(N + S×r2)  (현재 r2 적용)
-//         L=4000% → P(top) ≈ P_MAX_TOP (균등 증가)
-//   r2_eff = (1/P_target − N) / S
+// [신규] 행운력에 따라 r2_eff 감쇠 (4th root 곡선 + k=0.97, 효율 2배 향상)
+//   t_lin = clamp(L/4000, 0, 1)
+//   t     = t_lin ^ 0.25           ← 네제곱근, 초반/중반 효율 대폭 향상
+//   r2_eff = r2 × (1 − 0.97×t)
 //
-//   t = clamp(L/4000, 0, 1)
-//   P_target = P0 + (P_MAX_TOP − P0) × t
+//   L=0%:    r2_eff = r2          (현재값 유지)
+//   L=1000%: r2_eff = r2 × 0.314  (이전 0.525 → 더 빠르게 감쇠, 효율 ↑)
+//   L=4000%: r2_eff = r2 × 0.03   (이전 0.05 → 더 평탄해짐, 끝값도 향상)
 //
-//   효과: 매 L 구간마다 P(top)이 균등 증가 (마지막 폭증 방지)
-const P_MAX_TOP = 0.03;  // L=4000%일 때 최고수익 마리 확률 ≈ 3%
-
-function calcR2Eff(L, grade) {
-  const t = Math.min(Math.max((L || 0) / 4000, 0), 1);
-  const list = BR[grade];
-  const N = list.length;
-  const S = list.reduce((sum, b) => sum + b.r, 0);
-
-  if (S === 0) return r2;  // 모두 rank=0이면 의미 없음
-
-  const P0 = 1 / (N + S * r2);            // L=0% P(top)
-  const P_target = P0 + (P_MAX_TOP - P0) * t;
-  if (P_target <= 0) return r2;            // 안전망
-
-  const r2_eff = (1 / P_target - N) / S;
-  return Math.max(0, r2_eff);              // 음수 방지
+//   효과: L=4000%까지 계속 증가하면서 매 구간 효율이 이전 대비 1.5~1.8배 ↑
+function calcR2Eff(L) {
+  const t_lin = Math.min(Math.max((L || 0) / 4000, 0), 1);
+  const t = Math.pow(t_lin, 0.25);
+  return r2 * (1 - 0.97 * t);
 }
 
 function calcBrProbs(grade, L) {
   const list = BR[grade];
-  const r2e = calcR2Eff(L, grade);
-  const w = list.map(b=>1+r2e*b.r);
+  const r2e = calcR2Eff(L);
+  // Secret 등급만 rank^1.5 가중치 (다른 등급보다 가파른 분포 + 행운 효과 잘 보임)
+  // 그 외 등급은 선형(rank^1) 가중치
+  const isSecret = (grade === 'Secret');
+  const w = list.map(b => 1 + r2e * (isSecret ? Math.pow(b.r, 1.5) : b.r));
   const s = w.reduce((a,b)=>a+b,0);
   return w.map(x=>x/s*100);
 }
@@ -695,10 +686,11 @@ function updateDispValues() {
   const extraExp = Math.min(Math.max((effLuck - 1000) / 1000, 0), 100);
   document.getElementById('disp-extra').textContent = extraExp.toFixed(2);
   document.getElementById('disp-eff').textContent   = (n_exp + extraExp).toFixed(1);
-  // [신규] r2 평탄화 — Secret 등급 기준으로 표시
-  const r2t = Math.min(Math.max(effLuck/4000, 0), 1);
+  // [신규] r2 평탄화 — t는 sqrt(L/4000) 곡선
+  const r2t_lin = Math.min(Math.max(effLuck/4000, 0), 1);
+  const r2t = Math.pow(r2t_lin, 0.25);
   document.getElementById('disp-r2t').textContent   = r2t.toFixed(4);
-  document.getElementById('disp-r2eff').textContent = calcR2Eff(effLuck, 'Secret').toFixed(4);
+  document.getElementById('disp-r2eff').textContent = calcR2Eff(effLuck).toFixed(4);
 }
 
 function render() {
@@ -843,7 +835,7 @@ function exportGachaSystem() {
 'local r2    = ' + r2.toFixed(2) + '  -- 감쇠계수 (개체용) - 클수록 저수익 개체가 더 자주 등장',
 'local LUCK  = ' + luck + '           -- 행운력 (0~4000%)',
 'local N_EXP = ' + n_exp.toFixed(1) + '         -- 집중력 (0~5.0) - 클수록 행운력 효과가 최상위에 집중',
-'local SPEAR = ' + spearCount + '           -- 창 갯수 (1~10)',
+'local SPEAR = ' + spearCount + '           -- 창 갯수 (1~18)',
 '',
 '-- 등급별 브레인롯 풀 종수 (Common~Secret, OG 삭제)',
 'local POOL_SIZE = {',
@@ -962,15 +954,18 @@ function exportGachaSystem() {
 '--              예) { ["Dragon Cannelloni"]=true }',
 '-- 반환값: 브레인롯 ID',
 '-- ============================',
-'-- [신규] r2_eff 계산 — P_top이 L에 선형 증가하도록 역산',
-'--   t = clamp(L/4000, 0, 1)',
-'--   N = 등급 마리 수, S = rank 합',
-'--   P0 = 1/(N + S×r2)   (L=0% P(top))',
-'--   P_MAX_TOP ≈ 0.03    (L=4000% P(top) ≈ 3%)',
-'--   P_target = P0 + (P_MAX_TOP − P0) × t',
-'--   r2_eff = (1/P_target − N) / S',
-'-- 효과: 매 L 구간마다 P(top) 균등 증가 (마지막 폭증 방지)',
-'local P_MAX_TOP = 0.03  -- L=4000% 일 때 최고수익 마리 확률 (≈3%)',
+'-- [신규] r2_eff 계산 — 4th root 곡선 + k=0.97 (효율 향상 버전)',
+'--   t_lin = clamp(L/4000, 0, 1)',
+'--   t     = t_lin ^ 0.25',
+'--   r2_eff = r2 × (1 - 0.97 × t)',
+'--   L=0%:    r2_eff = r2',
+'--   L=1000%: r2_eff = r2 × 0.314  (이전 sqrt 식 대비 1.6배 효율)',
+'--   L=4000%: r2_eff = r2 × 0.03   (이전 5% → 3% 까지 감쇠, 끝값도 향상)',
+'-- 효과: L=4000%까지 계속 증가, 중간 구간 효율 1.5~1.8배 ↑',
+'--',
+'-- [신규] Secret 등급(grade=6)만 rank^1.5 가중치 사용:',
+'--   일반:   W = 1 + r2_eff × rank',
+'--   Secret: W = 1 + r2_eff × rank^1.5  ← 다른 등급보다 가파른 분포, 행운 효과 잘 보임',
 '',
 'function GachaSystem.rollBrainrot(grade, L, excludeList)',
 '    -- getBrainrotList(grade): 개발자가 직접 연결',
@@ -985,35 +980,21 @@ function exportGachaSystem() {
 '        end',
 '    end',
 '',
-'    -- N (마리 수), S (rank 합) 계산',
-'    local N = #candidates',
-'    local S = 0',
-'    for _, b in ipairs(candidates) do',
-'        S = S + b.rank',
-'    end',
+'    -- r2_eff 계산 (4th root 곡선)',
+'    local t_lin = math.clamp((L or 0) / 4000, 0, 1)',
+'    local t = t_lin ^ 0.25',
+'    local r2_eff = r2 * (1 - 0.97 * t)',
 '',
-'    -- r2_eff 계산 (P_top 역산)',
-'    local r2_eff',
-'    if S == 0 or N == 0 then',
-'        r2_eff = r2  -- rank 모두 0이거나 후보 비면 무의미',
-'    else',
-'        local t = math.clamp((L or 0) / 4000, 0, 1)',
-'        local P0 = 1 / (N + S * r2)',
-'        local P_target = P0 + (P_MAX_TOP - P0) * t',
-'        if P_target <= 0 then',
-'            r2_eff = r2',
-'        else',
-'            r2_eff = (1 / P_target - N) / S',
-'            if r2_eff < 0 then r2_eff = 0 end',
-'        end',
-'    end',
+'    -- Secret 등급만 rank^1.5 가중치 (전설 느낌 + 행운 효과 잘 보임)',
+'    local isSecret = (grade == 6)',
 '',
 '    -- 가중치: rank 높을수록(저수익일수록) 더 자주 등장',
 '    -- (L 증가 → r2_eff 감소 → 최고수익 마리 확률 점진 증가)',
 '    local weights = {}',
 '    local total = 0',
 '    for _, b in ipairs(candidates) do',
-'        local w = 1 + r2_eff * b.rank',
+'        local rankTerm = isSecret and (b.rank ^ 1.5) or b.rank',
+'        local w = 1 + r2_eff * rankTerm',
 '        table.insert(weights, { id=b.id, w=w })',
 '        total = total + w',
 '    end',
